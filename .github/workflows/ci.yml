@@ -1,0 +1,26 @@
+name: Reference checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install Rust
+        run: rustup toolchain install 1.94.1 --profile minimal --component rustfmt --component clippy
+      - name: Formatting
+        run: cargo fmt --all -- --check
+      - name: Tests
+        run: cargo test --locked --all-targets
+      - name: Lints
+        run: cargo clippy --locked --all-targets -- -D warnings
+      - name: Offline example
+        run: cargo run --locked --bin kcc20
+      - name: Hash-chain example
+        run: cargo run --locked --bin kcc20 -- hash-chain

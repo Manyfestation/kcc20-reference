@@ -14,7 +14,6 @@ const byte BORROW_AMOUNT_THRESHOLD = 0x01;
 const byte BORROW_SCHNORR_SIGNATURE = 0x02;
 const byte BORROW_HASH_CHAIN = 0x03;
 
-const int MAX_TOKEN_INPUTS = 3;
 const int MAX_DELEGATES = 2; // MAX_TOKEN_INPUTS - 1.
 const int MAX_TOKEN_OUTPUTS = 3;
 

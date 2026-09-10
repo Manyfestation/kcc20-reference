@@ -81,7 +81,7 @@ A hash-chain borrow requires `BLAKE3(next_guard || one_time_public_key) == borro
 
 Tests encode transactions directly and execute them in the covenant-enabled VM. This lets malformed cardinalities, role selections, witnesses, and continuations reach the contract without being rejected by a transaction builder first. The suite covers each owner scheme as leader and delegate, all borrow schemes, all supported input/output shapes, authorization failures, conservation, state preservation, and integer boundaries.
 
-ABI regression tests pin state field order and the KCC1 dispatch tags. CI runs formatting checks, tests, Clippy, and the offline example.
+ABI regression tests pin state field order and the KCC1 dispatch tags.
 
 The contract implements transfers within an established token family. Issuance must establish the initial supply and valid states under the reference program. Synthetic UTXO tests do not exercise genesis, network submission, or wallet synchronization, and are not an independent security audit.
 

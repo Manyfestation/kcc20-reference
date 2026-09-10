@@ -5,8 +5,8 @@ use kaspa_consensus_core::tx::{TransactionOutpoint, UtxoEntry};
 use secp256k1::Keypair;
 
 use super::{
-    ArtifactValue, CovenantBinding, DemoResult, EntryCall, Hash, PATH_BORROW, TOKEN_OUTPUT_SOMPI,
-    TxBuilder, TxContext, args, demo_keys, demo_outpoint, sign_input, token_state,
+    CovenantBinding, DemoResult, EntryCall, Hash, PATH_BORROW, TOKEN_OUTPUT_SOMPI, TxBuilder,
+    TxContext, args, demo_keys, demo_outpoint, sign_input, token_state,
 };
 
 const BORROW_HASH_CHAIN: u8 = 0x03;
@@ -62,10 +62,7 @@ pub fn run(artifact: &Artifact) -> DemoResult<()> {
         bob_after.insert("amount".into(), (200 + received).into());
         bob_after.insert("borrow_guard".into(), next_guard.to_vec().into());
         let alice_after = token_state(&alice_public_key, 100 - received);
-        let next_states = ArtifactValue::Array(vec![
-            ArtifactValue::Object(bob_after.clone()),
-            ArtifactValue::Object(alice_after.clone()),
-        ]);
+        let next_states = vec![bob_after.clone(), alice_after.clone()];
         let borrow = EntryCall::new("transfer").args_with(|transaction, input_index| {
             let mut witness = vec![PATH_BORROW];
             witness.extend(next_guard);

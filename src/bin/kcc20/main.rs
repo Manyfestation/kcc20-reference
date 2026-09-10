@@ -88,10 +88,7 @@ fn main() -> DemoResult<()> {
         false,
         Some(covenant_id),
     )?;
-    let next_states = ArtifactValue::Array(vec![
-        ArtifactValue::Object(bob_after.clone()),
-        ArtifactValue::Object(alice_after.clone()),
-    ]);
+    let next_states = vec![bob_after.clone(), alice_after.clone()];
 
     let transfer = EntryCall::new("transfer").args_with(|_tx, _input_index| {
         let witness = vec![PATH_BORROW];

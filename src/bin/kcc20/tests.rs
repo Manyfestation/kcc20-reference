@@ -6,8 +6,8 @@ use argent::{
     compile_inline,
 };
 use argent_runtime::{
-    BuilderError, BuilderResult, covenant_engine_flags, execute_input_with_covenants,
-    execute_transaction_with_covenants,
+    BuilderError, BuilderResult, IntoArtifactValue, covenant_engine_flags,
+    execute_input_with_covenants, execute_transaction_with_covenants,
 };
 use kaspa_consensus_core::{
     hashing::{
@@ -333,13 +333,7 @@ impl Transfer {
             utxos.clone(),
         );
         let declared = self.declared_states.as_ref().unwrap_or(&self.outputs);
-        let next_states = ArtifactValue::Array(
-            declared
-                .iter()
-                .cloned()
-                .map(ArtifactValue::Object)
-                .collect(),
-        );
+        let next_states = declared.as_slice().into_artifact_value();
         for (index, input) in self.inputs.iter().enumerate() {
             let input_index = index + input_offset;
             let entry = self.entries.as_ref().map_or(
@@ -529,10 +523,10 @@ fn threshold_uses_only_the_first_eight_guard_bytes() {
 #[test]
 fn borrowed_receive_preserves_owner_policy_and_sompi() {
     for (field, value) in [
-        ("owner", ArtifactValue::from(vec![0x42u8; 32])),
+        ("owner", vec![0x42u8; 32].into()),
         ("owner_scheme", OWNER_COVENANT_ID.into()),
         ("borrow_scheme", BORROW_DISABLED.into()),
-        ("borrow_guard", ArtifactValue::from(vec![0u8; 32])),
+        ("borrow_guard", vec![0u8; 32].into()),
     ] {
         let mut transfer = Transfer::borrowed(11);
         transfer.outputs[0].insert(field.into(), value);

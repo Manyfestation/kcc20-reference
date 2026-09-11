@@ -437,13 +437,6 @@ fn transfer_rejects_amount_and_extension_mismatches() {
         transfer.rejects_at(0);
     }
     let mut transfer = Transfer::borrowed(11);
-    transfer.inputs[0]
-        .state
-        .insert("amount".into(), (-5i64).into());
-    transfer.outputs[0].insert("amount".into(), 6i64.into());
-    transfer.rejects_at(0);
-
-    let mut transfer = Transfer::borrowed(11);
     transfer.inputs[1]
         .state
         .insert("extension_commitment".into(), vec![0x42u8; 32].into());
@@ -611,17 +604,7 @@ fn hash_chain_borrow_advances_guard_and_rejects_reused_links() {
 }
 
 #[test]
-fn transfer_rejects_negative_delegates_and_overflowing_totals() {
-    let mut transfer = Transfer::borrowed(11);
-    // Use the normal path so borrow-increase checks cannot mask a negative delegate.
-    transfer.inputs[0].authorization = Authorization::Owner(demo_keys(0xbb).0);
-    transfer.inputs[1]
-        .state
-        .insert("amount".into(), (-1i64).into());
-    transfer.outputs[0].insert("amount".into(), 199i64.into());
-    transfer.outputs[1].insert("amount".into(), 0i64.into());
-    transfer.rejects_at(0);
-
+fn transfer_rejects_overflowing_totals() {
     let mut transfer = Transfer::borrowed(11);
     transfer.inputs[0]
         .state

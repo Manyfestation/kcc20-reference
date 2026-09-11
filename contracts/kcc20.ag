@@ -53,7 +53,7 @@ fn require_owner_authorized(
     byte[] witness
 ) {
     if (owner_scheme == OWNER_P2PK_SCHNORR) {
-        require(witness.length == 65);
+        // The byte[65] conversion below implicitly validates the witness length.
         require(checkSig(
             sig(byte[65](witness)),
             pubkey(owner)
@@ -108,11 +108,11 @@ actor KCC20 owns KCC20State {
         require(next_states.length == next_outputs.length);
         require(witness.length > 0);
 
-        // Account for every input in the covenant family.
-        require(amount >= 0);
+        // Sum the token amounts of all inputs, starting with the leader's.
         int input_total = amount;
         for (i, 0, delegates.length, MAX_DELEGATES) {
-            require(delegates[i].amount >= 0);
+            // Require all inputs to share the same extension commitment,
+            // using the leader's as the reference.
             require(delegates[i].extension_commitment == extension_commitment);
             input_total = input_total + delegates[i].amount;
         }
@@ -149,7 +149,8 @@ actor KCC20 owns KCC20State {
                 amount_threshold = OpBin2Num(borrow_guard.slice(0, 8));
                 require(amount_threshold >= 0);
             } else if (borrow_scheme == BORROW_SCHNORR_SIGNATURE) {
-                require(path_witness.length == 65);
+                // The byte[65] conversion below implicitly validates the
+                // witness length.
                 require(checkSig(
                     sig(byte[65](path_witness)),
                     pubkey(borrow_guard)

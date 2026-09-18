@@ -37,14 +37,7 @@ fn require_valid_borrow_scheme(byte borrow_scheme) {
 }
 
 fn p2pkh_hash(byte[] public_key) -> byte[32] {
-    // KCC2's PublicKeyHash domain is zero-padded to a 32-byte BLAKE3 key.
-    return blake3WithKey(
-        public_key,
-        byte[32](
-            byte[]("PublicKeyHash")
-                + byte[19](0x00000000000000000000000000000000000000)
-        )
-    );
+    return blake3(public_key);
 }
 
 fn require_owner_authorized(

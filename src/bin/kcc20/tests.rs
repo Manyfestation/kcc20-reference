@@ -47,9 +47,7 @@ fn covenant_id() -> Hash {
 }
 
 fn public_key_hash(public_key: &[u8]) -> [u8; 32] {
-    let mut domain = [0u8; 32];
-    domain[..13].copy_from_slice(b"PublicKeyHash");
-    *blake3::keyed_hash(&domain, public_key).as_bytes()
+    *blake3::hash(public_key).as_bytes()
 }
 
 fn chain_guard(next_guard: &[u8; 32], key: &Keypair) -> [u8; 32] {
@@ -395,6 +393,33 @@ fn leader_and_delegate_accept_each_owner_scheme() {
         transfer
             .build()
             .unwrap_or_else(|error| panic!("delegate scheme {scheme:#04x}: {error}"));
+    }
+}
+
+#[test]
+fn p2pkh_rejects_legacy_domain_hashes_for_both_roles() {
+    let (key, schnorr_public_key) = demo_keys(0xaa);
+    let mut legacy_domain = [0u8; 32];
+    legacy_domain[..13].copy_from_slice(b"PublicKeyHash");
+    for scheme in [OWNER_P2PKH_SCHNORR, OWNER_P2PKH_ECDSA] {
+        let public_key = if scheme == OWNER_P2PKH_SCHNORR {
+            schnorr_public_key.to_vec()
+        } else {
+            key.public_key().serialize().to_vec()
+        };
+        let legacy_owner = blake3::keyed_hash(&legacy_domain, &public_key);
+        for index in [0, 1] {
+            let mut transfer = if index == 0 {
+                Transfer::normal()
+            } else {
+                Transfer::borrowed(11)
+            };
+            transfer.owner_scheme(index, scheme);
+            transfer.inputs[index]
+                .state
+                .insert("owner".into(), legacy_owner.as_bytes().to_vec().into());
+            transfer.rejects_at(index);
+        }
     }
 }
 

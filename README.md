@@ -58,7 +58,7 @@ The leader is the lowest-indexed input in the covenant family. Its witness begin
 | `0x03` | `p2sh/v1` | Redeem-script commitment | One unsigned transaction input index |
 | `0x04` | `covenant-id/v1` | Covenant ID | Empty |
 
-Both public-key hashes use KCC2's keyed BLAKE3 `PublicKeyHash` domain. P2SH uses the version-0 envelope committing to the exact redeem script. Covenant-ID authorization requires a participating input of that family; KCC2 permits the active input itself to satisfy this check.
+Both public-key hashes use unkeyed BLAKE3 over the public-key bytes, without a domain key. P2SH uses the version-0 envelope committing to the exact redeem script. Covenant-ID authorization requires a participating input of that family; KCC2 permits the active input itself to satisfy this check.
 
 Transaction signatures contain 64 signature bytes followed by a consensus sighash byte. The reference accepts the consensus-valid sighash types. The example signs with `SIGHASH_ALL`.
 

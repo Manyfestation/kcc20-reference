@@ -5,6 +5,7 @@ use argent_runtime::{ArtifactValue, EntryCall, TxBuilder, TxContext, args, state
 use kaspa_consensus_core::{Hash, tx::CovenantBinding};
 
 mod chain_borrow;
+mod public_mint;
 mod support;
 use support::{DemoResult, demo_keys, demo_outpoint, sign_input};
 
@@ -44,16 +45,23 @@ fn token_state(owner: &[u8; 32], amount: i64) -> TokenState {
 
 fn main() -> DemoResult<()> {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let artifact = build_file(root.join("contracts/kcc20.ag"), root.join("build"))?;
     let mut arguments = std::env::args().skip(1);
     let example = arguments.next();
     if arguments.next().is_some() {
-        return Err("usage: kcc20 [threshold|hash-chain]".into());
+        return Err("usage: kcc20 [threshold|hash-chain|mint]".into());
     }
+    if example.as_deref() == Some("mint") {
+        let artifact = build_file(
+            root.join("contracts/public_mint.ag"),
+            root.join("build/public-mint"),
+        )?;
+        return public_mint::run(&artifact);
+    }
+    let artifact = build_file(root.join("contracts/kcc20.ag"), root.join("build"))?;
     match example.as_deref() {
         Some("hash-chain") => return chain_borrow::run(&artifact),
         None | Some("threshold") => {}
-        Some(_) => return Err("usage: kcc20 [threshold|hash-chain]".into()),
+        Some(_) => return Err("usage: kcc20 [threshold|hash-chain|mint]".into()),
     }
     let (alice, alice_public_key) = demo_keys(0xaa);
     let (_, bob_public_key) = demo_keys(0xbb);

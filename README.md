@@ -1,12 +1,13 @@
 # KCC20 reference
 
-Argent implementation of the KCC20 fungible-token convention for Kaspa, with an offline Rust example and contract tests.
+Argent implementation of the KCC20 fungible-token convention for Kaspa, with a public-mint app, offline Rust examples, and contract tests.
 
 ## Run
 
 ```sh
 cargo run --locked --bin kcc20
 cargo run --locked --bin kcc20 -- hash-chain
+cargo run --locked --bin kcc20 -- mint
 cargo test --locked --all-targets
 cargo clippy --locked --all-targets -- -D warnings
 ```
@@ -22,6 +23,47 @@ increase from 200 to 201 to 202, while Alice's decrease from 100 to 99 to 98.
 Each borrow reveals the next guard and signs with its one-time key. The second
 transaction spends the actual outputs of the first, advancing the chain to its
 terminal guard. Both transactions are validated locally; nothing is submitted.
+
+The `mint` example builds `contracts/public_mint.ag` into `build/public-mint/`.
+It launches a minter with an allowance of 25 tokens and a per-mint amount of 10,
+then mints **10, 10, 5** tokens. Each mint spends the previous minter output;
+Alice transfers each actual minted token output to Bob. Funding inputs are
+synthetic OP_TRUE UTXOs. Genesis, mints, and transfers are executed locally;
+nothing is submitted to a network.
+
+## Public mint
+
+`KCC20PublicMint` imports the unchanged `KCC20` actor and adds `PublicMint`:
+
+```text
+PublicMintState {
+    remaining:   int
+    mint_amount: int
+}
+```
+
+`mint(byte[32] recipient_owner, byte recipient_owner_scheme)` is permissionless.
+The caller selects the recipient, not the quantity. Each call creates
+`min(remaining, mint_amount)` tokens and reduces the successor minter's allowance
+by that amount. The mint amount remains fixed; zero or negative allotments fail,
+including calls after exhaustion. The initial allowance is the supply available
+to that minter, so no separate cap or minted counter is stored.
+
+The entry creates exactly one minter successor and one KCC20 recipient output.
+It preserves the minter's sompi value; the caller funds the new token output and
+transaction fee. New tokens have borrowing disabled and a zero extension
+commitment, a fixed convention for this app rather than a special KCC20 value.
+There is no issuer key, fee policy, or administrative entrypoint.
+
+A single-minter deployment should start with only one `PublicMint` actor and no
+initial token balances. The advertised supply must be checked against the full
+genesis output group. All quantities are integer base units in the KCC1 range.
+
+The mintable app has its own compiled artifact. Argent adds template context and
+witness arguments when linking the two actors, so its physical ABI and dispatch
+tags differ from the standalone reference. Use `build/public-mint/artifact.json`
+to construct its transactions. The source-level KCC20 state and transfer logic
+are shared with the standalone reference below.
 
 ## Reference configuration
 
@@ -83,13 +125,20 @@ Tests encode transactions directly and execute them in the covenant-enabled VM. 
 
 ABI regression tests pin state field order and the KCC1 dispatch tags.
 
-The contract implements transfers within an established token family. Issuance must establish the initial supply and valid states under the reference program. Synthetic UTXO tests do not exercise genesis, network submission, or wallet synchronization, and are not an independent security audit.
+The standalone contract implements transfers within an established token family.
+The public-mint tests cover local genesis, successive issuance and transfer,
+exhaustion, integer boundaries, altered states, output shape, and preservation of
+the minter's sompi. These offline tests do not exercise network submission or
+wallet synchronization, and are not an independent security audit.
 
 ## Files
 
 - `contracts/kcc20.ag`: canonical contract.
+- `contracts/public_mint.ag`: two-actor public-mint app.
 - `src/bin/kcc20/main.rs`: threshold-borrow example.
 - `src/bin/kcc20/chain_borrow.rs`: two successive hash-chain borrowed receives.
+- `src/bin/kcc20/public_mint.rs`: local launch, mint, and transfer example.
+- `src/bin/kcc20/public_mint/tests.rs`: issuance tests.
 - `src/bin/kcc20/support.rs`: offline keys and transaction signing.
 - `src/bin/kcc20/tests.rs`: contract and ABI tests.
 

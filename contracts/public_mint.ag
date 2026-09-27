@@ -1,0 +1,54 @@
+// Permissionless, fixed-allotment issuance for KCC20.
+
+import "./kcc20.ag";
+
+const byte[32] EMPTY_COMMITMENT = byte[32](0x0000000000000000000000000000000000000000000000000000000000000000);
+
+state PublicMintState {
+    int remaining;
+    int mint_amount;
+}
+
+actor PublicMint owns PublicMintState {
+    entry mint(byte[32] recipient_owner, byte recipient_owner_scheme) emits {
+        minter: PublicMint,
+        recipient: KCC20,
+    } {
+        // Mint the fixed allotment, or the remaining supply on the final call.
+        int amount = mint_amount;
+        if (remaining < amount) {
+            amount = remaining;
+        }
+        require(amount > 0);
+        require_valid_owner_scheme(recipient_owner_scheme);
+
+        // Update minter's allowance while preserving the per-mint amount.
+        PublicMintState next_minter = {
+            remaining: remaining - amount,
+            mint_amount: mint_amount,
+        };
+
+        KCC20State new_token = {
+            amount: amount,
+            owner: recipient_owner,
+            owner_scheme: recipient_owner_scheme,
+            borrow_scheme: BORROW_DISABLED,
+            borrow_guard: EMPTY_COMMITMENT,
+            extension_commitment: EMPTY_COMMITMENT,
+        };
+
+        // Preserve the minter's utxo value
+        require(minter.value == self.value);
+        // Declare the recipient's token utxo value unrestricted
+        unrestricted(recipient.value);
+        become {
+            minter <- PublicMint(next_minter),
+            recipient <- KCC20(new_token),
+        };
+    }
+}
+
+app KCC20PublicMint {
+    actor KCC20;
+    actor PublicMint;
+}

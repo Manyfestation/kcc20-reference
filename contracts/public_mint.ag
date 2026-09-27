@@ -1,8 +1,6 @@
-// Permissionless, fixed-allotment issuance for KCC20.
+// Permissionless issuance for KCC20 with a per-mint limit.
 
 import "./kcc20.ag";
-
-const byte[32] EMPTY_COMMITMENT = byte[32](0x0000000000000000000000000000000000000000000000000000000000000000);
 
 state PublicMintState {
     int remaining;
@@ -14,25 +12,17 @@ actor PublicMint owns PublicMintState {
         minter: PublicMint,
         recipient: KCC20,
     } {
-        // Mint the fixed allotment, or the remaining supply on the final call.
-        int amount = mint_amount;
-        if (remaining < amount) {
-            amount = remaining;
-        }
-        require(amount > 0);
-        require(recipient_state.amount == amount);
+        require(recipient_state.amount > 0);
+        require(recipient_state.amount <= mint_amount);
+        require(recipient_state.amount <= remaining);
 
-        // Validate the recipient's policies as in a normal token transfer.
+        // Validate the recipient's policy schemes.
         require_valid_owner_scheme(recipient_state.owner_scheme);
         require_valid_borrow_scheme(recipient_state.borrow_scheme);
-        if (recipient_state.borrow_scheme == BORROW_AMOUNT_THRESHOLD) {
-            require(OpBin2Num(recipient_state.borrow_guard.slice(0, 8)) >= 0);
-        }
-        require(recipient_state.extension_commitment == EMPTY_COMMITMENT);
 
-        // Update minter's allowance while preserving the per-mint amount.
+        // Deduct the minted amount while preserving the per-mint limit.
         PublicMintState next_minter = {
-            remaining: remaining - amount,
+            remaining: remaining - recipient_state.amount,
             mint_amount: mint_amount,
         };
 

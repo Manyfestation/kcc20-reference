@@ -29,7 +29,9 @@ fn mint_case(
     let builder = TxBuilder::new(artifact())?;
     let covenant_id = Hash::from_bytes([0x11; 32]);
     let before = minter_state(remaining, lot);
-    let amount = remaining.min(lot);
+    let ArtifactValue::Int(amount) = recipient["amount"] else {
+        panic!("recipient amount must be an integer");
+    };
     let utxo = builder.covenant_utxo(
         "PublicMint",
         before.clone(),
@@ -90,6 +92,9 @@ fn public_mint_accepts_full_partial_and_maximum_allotments() {
     ] {
         mint_case(remaining, lot, recipient_state(remaining.min(lot))).unwrap();
     }
+    for (remaining, lot, amount) in [(25, 10, 3), (25, 10, 9), (5, 10, 4)] {
+        mint_case(remaining, lot, recipient_state(amount)).unwrap();
+    }
 }
 
 #[test]
@@ -125,17 +130,20 @@ fn public_mint_accepts_each_owner_and_borrow_policy() {
 
 #[test]
 fn public_mint_rejects_invalid_recipient_amounts_and_policies() {
-    for amount in [-1, 0, 3, 9, 11, 26] {
+    for amount in [-1, 0, 11, 26] {
         rejects(mint_case(25, 10, recipient_state(amount)));
     }
-    for amount in [4, 6, 10] {
+    for amount in [6, 10] {
         rejects(mint_case(5, 10, recipient_state(amount)));
     }
 
     let mut recipient = recipient_state(10);
     recipient.insert("borrow_scheme".into(), 4u8.into());
     rejects(mint_case(25, 10, recipient));
+}
 
+#[test]
+fn public_mint_accepts_caller_selected_guard_and_extension() {
     let mut recipient = recipient_state(10);
     recipient.insert("borrow_scheme".into(), BORROW_AMOUNT_THRESHOLD.into());
     let mut guard = vec![0u8; 32];
@@ -143,11 +151,11 @@ fn public_mint_rejects_invalid_recipient_amounts_and_policies() {
     guard[0] = 1;
     guard[7] = 0x80;
     recipient.insert("borrow_guard".into(), guard.into());
-    rejects(mint_case(25, 10, recipient));
+    mint_case(25, 10, recipient).unwrap();
 
     let mut recipient = recipient_state(10);
     recipient.insert("extension_commitment".into(), vec![1u8; 32].into());
-    rejects(mint_case(25, 10, recipient));
+    mint_case(25, 10, recipient).unwrap();
 }
 
 #[test]

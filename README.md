@@ -25,8 +25,9 @@ transaction spends the actual outputs of the first, advancing the chain to its
 terminal guard. Both transactions are validated locally; nothing is submitted.
 
 The `mint` example builds `contracts/public_mint.ag` into `build/public-mint/`.
-It launches a minter with an allowance of 25 tokens and a per-mint amount of 10,
-then mints **10, 10, 5** tokens. Each mint spends the previous minter output;
+It launches a minter with an allowance of 25 tokens and a per-mint limit of 10,
+then chooses to mint **10, 10, 5** tokens. Smaller positive amounts are also allowed.
+Each mint spends the previous minter output;
 Alice transfers each actual minted token output to Bob. Funding inputs are
 synthetic OP_TRUE UTXOs. Genesis, mints, and transfers are executed locally;
 nothing is submitted to a network.
@@ -43,19 +44,17 @@ PublicMintState {
 ```
 
 `mint(KCC20State recipient_state)` is permissionless.
-The caller supplies the recipient's complete token state, including valid owner
-and borrowing policies. Its amount must equal the fixed allotment. Each call creates
-`min(remaining, mint_amount)` tokens and reduces the successor minter's allowance
-by that amount. The mint amount remains fixed; zero or negative allotments fail,
-including calls after exhaustion. The initial allowance is the supply available
+The caller supplies the recipient's complete token state. Its amount must be
+positive and no greater than either `mint_amount` or `remaining`. Each call reduces
+the successor minter's allowance by the recipient amount. The per-mint limit stays
+fixed, and calls after exhaustion fail. The initial allowance is the supply available
 to that minter, so no separate cap or minted counter is stored.
 
 The entry creates exactly one minter successor and one KCC20 recipient output.
 It preserves the minter's sompi value; the caller funds the new token output and
-transaction fee. The recipient's owner and borrow schemes are validated as in a
-normal token transfer, including a non-negative amount threshold when applicable.
-New tokens must have a zero extension commitment, a fixed convention for this
-app rather than a special KCC20 value. The example selects disabled borrowing.
+transaction fee. The recipient's owner and borrow schemes are validated; its
+borrow guard and extension commitment are caller-selected. The example selects
+disabled borrowing. The KCC20 transfer entry still validates borrowing thresholds.
 There is no issuer key, fee policy, or administrative entrypoint.
 
 A single-minter deployment should start with only one `PublicMint` actor and no
@@ -130,7 +129,8 @@ ABI regression tests pin state field order and the KCC1 dispatch tags.
 
 The standalone contract implements transfers within an established token family.
 The public-mint tests cover local genesis, successive issuance and transfer,
-exhaustion, integer boundaries, altered states, output shape, and preservation of
+caller-selected amounts, borrow guards and extension commitments, exhaustion,
+integer boundaries, altered states, output shape, and preservation of
 the minter's sompi. These offline tests do not exercise network submission or
 wallet synchronization, and are not an independent security audit.
 

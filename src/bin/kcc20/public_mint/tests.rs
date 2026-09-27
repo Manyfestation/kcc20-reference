@@ -17,14 +17,19 @@ fn artifact() -> &'static Artifact {
     })
 }
 
-fn mint_case(remaining: i64, lot: i64, scheme: u8) -> BuilderResult<(Transaction, Vec<UtxoEntry>)> {
+fn recipient_state(amount: i64) -> TokenState {
+    token_state(&demo_keys(0xaa).1, amount)
+}
+
+fn mint_case(
+    remaining: i64,
+    lot: i64,
+    recipient: TokenState,
+) -> BuilderResult<(Transaction, Vec<UtxoEntry>)> {
     let builder = TxBuilder::new(artifact())?;
     let covenant_id = Hash::from_bytes([0x11; 32]);
-    let (_, owner) = demo_keys(0xaa);
     let before = minter_state(remaining, lot);
     let amount = remaining.min(lot);
-    let mut recipient = token_state(&owner, amount);
-    recipient.insert("owner_scheme".into(), scheme.into());
     let utxo = builder.covenant_utxo(
         "PublicMint",
         before.clone(),
@@ -39,7 +44,7 @@ fn mint_case(remaining: i64, lot: i64, scheme: u8) -> BuilderResult<(Transaction
             .actor_input(
                 "PublicMint",
                 before,
-                EntryCall::new("mint").args(args!(owner.to_vec(), scheme)),
+                EntryCall::new("mint").args(args!(recipient.clone())),
                 demo_outpoint(1, 0),
                 utxo,
                 0,
@@ -83,19 +88,66 @@ fn public_mint_accepts_full_partial_and_maximum_allotments() {
         (i64::MAX, 1),
         (i64::MAX, i64::MAX),
     ] {
-        mint_case(remaining, lot, OWNER_P2PK_SCHNORR).unwrap();
-    }
-    for scheme in 0..=4 {
-        mint_case(25, 10, scheme).unwrap();
+        mint_case(remaining, lot, recipient_state(remaining.min(lot))).unwrap();
     }
 }
 
 #[test]
 fn public_mint_rejects_exhaustion_invalid_allowances_and_owner_schemes() {
     for (remaining, lot) in [(0, 10), (-1, 10), (25, 0), (25, -1)] {
-        rejects(mint_case(remaining, lot, OWNER_P2PK_SCHNORR));
+        rejects(mint_case(
+            remaining,
+            lot,
+            recipient_state(remaining.min(lot)),
+        ));
     }
-    rejects(mint_case(25, 10, 5));
+    let mut recipient = recipient_state(10);
+    recipient.insert("owner_scheme".into(), 5u8.into());
+    rejects(mint_case(25, 10, recipient));
+}
+
+#[test]
+fn public_mint_accepts_each_owner_and_borrow_policy() {
+    for owner_scheme in 0u8..=4 {
+        for borrow_scheme in 0u8..=3 {
+            let mut recipient = recipient_state(10);
+            recipient.insert("owner_scheme".into(), owner_scheme.into());
+            recipient.insert("borrow_scheme".into(), borrow_scheme.into());
+            let mut guard = demo_keys(0xcc).1;
+            if borrow_scheme == BORROW_AMOUNT_THRESHOLD {
+                guard[..8].copy_from_slice(&10i64.to_le_bytes());
+            }
+            recipient.insert("borrow_guard".into(), guard.to_vec().into());
+            mint_case(25, 10, recipient).unwrap();
+        }
+    }
+}
+
+#[test]
+fn public_mint_rejects_invalid_recipient_amounts_and_policies() {
+    for amount in [-1, 0, 3, 9, 11, 26] {
+        rejects(mint_case(25, 10, recipient_state(amount)));
+    }
+    for amount in [4, 6, 10] {
+        rejects(mint_case(5, 10, recipient_state(amount)));
+    }
+
+    let mut recipient = recipient_state(10);
+    recipient.insert("borrow_scheme".into(), 4u8.into());
+    rejects(mint_case(25, 10, recipient));
+
+    let mut recipient = recipient_state(10);
+    recipient.insert("borrow_scheme".into(), BORROW_AMOUNT_THRESHOLD.into());
+    let mut guard = vec![0u8; 32];
+    // KCC1 encodes -1 as an eight-byte signed-magnitude payload.
+    guard[0] = 1;
+    guard[7] = 0x80;
+    recipient.insert("borrow_guard".into(), guard.into());
+    rejects(mint_case(25, 10, recipient));
+
+    let mut recipient = recipient_state(10);
+    recipient.insert("extension_commitment".into(), vec![1u8; 32].into());
+    rejects(mint_case(25, 10, recipient));
 }
 
 #[test]
@@ -113,7 +165,7 @@ fn mint_binds_allowance_policy_and_recipient_state() {
         (1, "KCC20", "extension_commitment", vec![1u8; 32].into()),
     ];
     for (index, actor, field, value) in cases {
-        let (mut tx, utxos) = mint_case(25, 10, OWNER_P2PK_SCHNORR).unwrap();
+        let (mut tx, utxos) = mint_case(25, 10, recipient_state(10)).unwrap();
         let mut state = if index == 0 {
             minter_state(15, 10)
         } else {
@@ -131,11 +183,11 @@ fn mint_binds_allowance_policy_and_recipient_state() {
 
 #[test]
 fn mint_rejects_drained_principal_and_wrong_covenant() {
-    let (mut tx, utxos) = mint_case(25, 10, OWNER_P2PK_SCHNORR).unwrap();
+    let (mut tx, utxos) = mint_case(25, 10, recipient_state(10)).unwrap();
     tx.outputs[0].value -= 1;
     rejects(execute_transaction_with_covenants(&mut tx, utxos));
 
-    let (mut tx, utxos) = mint_case(25, 10, OWNER_P2PK_SCHNORR).unwrap();
+    let (mut tx, utxos) = mint_case(25, 10, recipient_state(10)).unwrap();
     tx.outputs[1].covenant = Some(CovenantBinding::new(0, Hash::from_bytes([0x22; 32])));
     // The covenant binding is rejected before script execution.
     assert!(matches!(
@@ -146,20 +198,20 @@ fn mint_rejects_drained_principal_and_wrong_covenant() {
 
 #[test]
 fn mint_rejects_missing_or_extra_outputs_and_multiple_minters() {
-    let (mut tx, utxos) = mint_case(25, 10, OWNER_P2PK_SCHNORR).unwrap();
+    let (mut tx, utxos) = mint_case(25, 10, recipient_state(10)).unwrap();
     tx.outputs.swap(0, 1);
     rejects(execute_transaction_with_covenants(&mut tx, utxos));
 
     for index in 0..2 {
-        let (mut tx, utxos) = mint_case(25, 10, OWNER_P2PK_SCHNORR).unwrap();
+        let (mut tx, utxos) = mint_case(25, 10, recipient_state(10)).unwrap();
         tx.outputs.remove(index);
         rejects(execute_transaction_with_covenants(&mut tx, utxos));
 
-        let (mut tx, utxos) = mint_case(25, 10, OWNER_P2PK_SCHNORR).unwrap();
+        let (mut tx, utxos) = mint_case(25, 10, recipient_state(10)).unwrap();
         tx.outputs.push(tx.outputs[index].clone());
         rejects(execute_transaction_with_covenants(&mut tx, utxos));
     }
-    let (mut tx, mut utxos) = mint_case(25, 10, OWNER_P2PK_SCHNORR).unwrap();
+    let (mut tx, mut utxos) = mint_case(25, 10, recipient_state(10)).unwrap();
     let mut second = tx.inputs[0].clone();
     second.previous_outpoint = demo_outpoint(3, 0);
     tx.inputs.push(second);

@@ -42,8 +42,9 @@ PublicMintState {
 }
 ```
 
-`mint(byte[32] recipient_owner, byte recipient_owner_scheme)` is permissionless.
-The caller selects the recipient, not the quantity. Each call creates
+`mint(KCC20State recipient_state)` is permissionless.
+The caller supplies the recipient's complete token state, including valid owner
+and borrowing policies. Its amount must equal the fixed allotment. Each call creates
 `min(remaining, mint_amount)` tokens and reduces the successor minter's allowance
 by that amount. The mint amount remains fixed; zero or negative allotments fail,
 including calls after exhaustion. The initial allowance is the supply available
@@ -51,8 +52,10 @@ to that minter, so no separate cap or minted counter is stored.
 
 The entry creates exactly one minter successor and one KCC20 recipient output.
 It preserves the minter's sompi value; the caller funds the new token output and
-transaction fee. New tokens have borrowing disabled and a zero extension
-commitment, a fixed convention for this app rather than a special KCC20 value.
+transaction fee. The recipient's owner and borrow schemes are validated as in a
+normal token transfer, including a non-negative amount threshold when applicable.
+New tokens must have a zero extension commitment, a fixed convention for this
+app rather than a special KCC20 value. The example selects disabled borrowing.
 There is no issuer key, fee policy, or administrative entrypoint.
 
 A single-minter deployment should start with only one `PublicMint` actor and no

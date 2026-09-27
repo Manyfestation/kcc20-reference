@@ -10,7 +10,7 @@ state PublicMintState {
 }
 
 actor PublicMint owns PublicMintState {
-    entry mint(byte[32] recipient_owner, byte recipient_owner_scheme) emits {
+    entry mint(KCC20State recipient_state) emits {
         minter: PublicMint,
         recipient: KCC20,
     } {
@@ -20,21 +20,20 @@ actor PublicMint owns PublicMintState {
             amount = remaining;
         }
         require(amount > 0);
-        require_valid_owner_scheme(recipient_owner_scheme);
+        require(recipient_state.amount == amount);
+
+        // Validate the recipient's policies as in a normal token transfer.
+        require_valid_owner_scheme(recipient_state.owner_scheme);
+        require_valid_borrow_scheme(recipient_state.borrow_scheme);
+        if (recipient_state.borrow_scheme == BORROW_AMOUNT_THRESHOLD) {
+            require(OpBin2Num(recipient_state.borrow_guard.slice(0, 8)) >= 0);
+        }
+        require(recipient_state.extension_commitment == EMPTY_COMMITMENT);
 
         // Update minter's allowance while preserving the per-mint amount.
         PublicMintState next_minter = {
             remaining: remaining - amount,
             mint_amount: mint_amount,
-        };
-
-        KCC20State new_token = {
-            amount: amount,
-            owner: recipient_owner,
-            owner_scheme: recipient_owner_scheme,
-            borrow_scheme: BORROW_DISABLED,
-            borrow_guard: EMPTY_COMMITMENT,
-            extension_commitment: EMPTY_COMMITMENT,
         };
 
         // Preserve the minter's utxo value
@@ -43,7 +42,7 @@ actor PublicMint owns PublicMintState {
         unrestricted(recipient.value);
         become {
             minter <- PublicMint(next_minter),
-            recipient <- KCC20(new_token),
+            recipient <- KCC20(recipient_state),
         };
     }
 }

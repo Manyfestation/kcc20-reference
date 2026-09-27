@@ -50,8 +50,7 @@ pub fn run(artifact: &Artifact) -> DemoResult<()> {
                 .actor_input(
                     "PublicMint",
                     minter_state(remaining, lot),
-                    EntryCall::new("mint")
-                        .args(args!(alice_public_key.to_vec(), OWNER_P2PK_SCHNORR)),
+                    EntryCall::new("mint").args(args!(minted_state.clone())),
                     minter.outpoint,
                     minter.utxo,
                     0,

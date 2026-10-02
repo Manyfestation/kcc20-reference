@@ -38,23 +38,29 @@ nothing is submitted to a network.
 
 ```text
 PublicMintState {
-    remaining:   int
-    mint_amount: int
+    remaining:            int
+    mint_amount:          int
+    extension_commitment: byte[32]
 }
 ```
 
 `mint(KCC20State recipient_state)` is permissionless.
 The caller supplies the recipient's complete token state. Its amount must be
 positive and no greater than either `mint_amount` or `remaining`. Each call reduces
-the successor minter's allowance by the recipient amount. The per-mint limit stays
-fixed, and calls after exhaustion fail. The initial allowance is the supply available
-to that minter, so no separate cap or minted counter is stored.
+the successor minter's allowance by the recipient amount. The per-mint limit and
+extension commitment stay fixed, and calls after exhaustion fail. The initial
+allowance is the supply available to that minter, so no separate cap or minted
+counter is stored.
 
 The entry creates exactly one minter successor and one KCC20 recipient output.
 It preserves the minter's sompi value; the caller funds the new token output and
 transaction fee. The recipient's owner and borrow schemes are validated; its
-borrow guard and extension commitment are caller-selected. The example selects
-disabled borrowing. The KCC20 transfer entry still validates borrowing thresholds.
+borrow guard is caller-selected. Its extension commitment must match the minter's
+commitment, chosen at launch and preserved by every mint. The example selects
+disabled borrowing and a commitment of 32 zero bytes. Zero is a convention of this
+deployment, with no special KCC20 meaning. The commitment fixes the extension
+identity; the minter does not interpret or validate the underlying extended state.
+The KCC20 transfer entry still validates borrowing thresholds.
 There is no issuer key, fee policy, or administrative entrypoint.
 
 A single-minter deployment should start with only one `PublicMint` actor and no
@@ -129,7 +135,7 @@ ABI regression tests pin state field order and the KCC1 dispatch tags.
 
 The standalone contract implements transfers within an established token family.
 The public-mint tests cover local genesis, successive issuance and transfer,
-caller-selected amounts, borrow guards and extension commitments, exhaustion,
+caller-selected amounts and borrow guards, fixed extension commitments, exhaustion,
 integer boundaries, altered states, output shape, and preservation of
 the minter's sompi. These offline tests do not exercise network submission or
 wallet synchronization, and are not an independent security audit.

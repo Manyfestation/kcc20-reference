@@ -26,9 +26,18 @@ fn mint_case(
     lot: i64,
     recipient: TokenState,
 ) -> BuilderResult<(Transaction, Vec<UtxoEntry>)> {
+    mint_case_with_extension(remaining, lot, &[0u8; 32], recipient)
+}
+
+fn mint_case_with_extension(
+    remaining: i64,
+    lot: i64,
+    extension_commitment: &[u8; 32],
+    recipient: TokenState,
+) -> BuilderResult<(Transaction, Vec<UtxoEntry>)> {
     let builder = TxBuilder::new(artifact())?;
     let covenant_id = Hash::from_bytes([0x11; 32]);
-    let before = minter_state(remaining, lot);
+    let before = minter_state(remaining, lot, extension_commitment);
     let ArtifactValue::Int(amount) = recipient["amount"] else {
         panic!("recipient amount must be an integer");
     };
@@ -54,7 +63,7 @@ fn mint_case(
             .input(demo_outpoint(2, 0), funding(), Vec::new(), 0)
             .actor_output(
                 "PublicMint",
-                minter_state(remaining - amount, lot),
+                minter_state(remaining - amount, lot, extension_commitment),
                 CovenantBinding::new(0, covenant_id),
                 TOKEN_OUTPUT_SOMPI,
             )
@@ -143,7 +152,7 @@ fn public_mint_rejects_invalid_recipient_amounts_and_policies() {
 }
 
 #[test]
-fn public_mint_accepts_caller_selected_guard_and_extension() {
+fn public_mint_accepts_caller_selected_guard() {
     let mut recipient = recipient_state(10);
     recipient.insert("borrow_scheme".into(), BORROW_AMOUNT_THRESHOLD.into());
     let mut guard = vec![0u8; 32];
@@ -152,19 +161,43 @@ fn public_mint_accepts_caller_selected_guard_and_extension() {
     guard[7] = 0x80;
     recipient.insert("borrow_guard".into(), guard.into());
     mint_case(25, 10, recipient).unwrap();
+}
 
-    let mut recipient = recipient_state(10);
-    recipient.insert("extension_commitment".into(), vec![1u8; 32].into());
-    mint_case(25, 10, recipient).unwrap();
+#[test]
+fn public_mint_requires_configured_extension_commitment() {
+    for extension_commitment in [[0u8; 32], [1u8; 32], [0xffu8; 32]] {
+        let mut recipient = recipient_state(10);
+        recipient.insert(
+            "extension_commitment".into(),
+            extension_commitment.to_vec().into(),
+        );
+        mint_case_with_extension(25, 10, &extension_commitment, recipient.clone()).unwrap();
+
+        let mut different = extension_commitment;
+        different[31] ^= 1;
+        recipient.insert("extension_commitment".into(), different.to_vec().into());
+        rejects(mint_case_with_extension(
+            25,
+            10,
+            &extension_commitment,
+            recipient,
+        ));
+    }
 }
 
 #[test]
 fn mint_binds_allowance_policy_and_recipient_state() {
     let builder = TxBuilder::new(artifact()).unwrap();
     let (_, owner) = demo_keys(0xaa);
-    let cases: [(usize, &str, &str, ArtifactValue); 8] = [
+    let cases: [(usize, &str, &str, ArtifactValue); 9] = [
         (0, "PublicMint", "remaining", 16i64.into()),
         (0, "PublicMint", "mint_amount", 11i64.into()),
+        (
+            0,
+            "PublicMint",
+            "extension_commitment",
+            vec![1u8; 32].into(),
+        ),
         (1, "KCC20", "amount", 11i64.into()),
         (1, "KCC20", "owner", vec![0xbbu8; 32].into()),
         (1, "KCC20", "owner_scheme", 1u8.into()),
@@ -175,7 +208,7 @@ fn mint_binds_allowance_policy_and_recipient_state() {
     for (index, actor, field, value) in cases {
         let (mut tx, utxos) = mint_case(25, 10, recipient_state(10)).unwrap();
         let mut state = if index == 0 {
-            minter_state(15, 10)
+            minter_state(15, 10, &[0u8; 32])
         } else {
             token_state(&owner, 10)
         };

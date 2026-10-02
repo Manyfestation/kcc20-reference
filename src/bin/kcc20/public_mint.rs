@@ -6,8 +6,12 @@ use kaspa_consensus_core::tx::{ScriptPublicKey, UtxoEntry};
 
 use super::*;
 
-fn minter_state(remaining: i64, mint_amount: i64) -> TokenState {
-    state! { remaining: remaining, mint_amount: mint_amount }
+fn minter_state(remaining: i64, mint_amount: i64, extension_commitment: &[u8; 32]) -> TokenState {
+    state! {
+        remaining: remaining,
+        mint_amount: mint_amount,
+        extension_commitment: extension_commitment.to_vec()
+    }
 }
 
 fn funding() -> UtxoEntry {
@@ -27,6 +31,8 @@ pub fn run(artifact: &Artifact) -> DemoResult<()> {
     let (_, bob_public_key) = demo_keys(0xbb);
     let mut remaining = 25;
     let lot = 10;
+    // This deployment uses zero as its fixed extension identity.
+    let extension_commitment = [0u8; 32];
     let launch = builder.build(
         &TxContext::new()
             .input(demo_outpoint(1, 0), funding(), Vec::new(), 0)
@@ -34,7 +40,7 @@ pub fn run(artifact: &Artifact) -> DemoResult<()> {
                 0,
                 "launch::token",
                 "PublicMint",
-                minter_state(remaining, lot),
+                minter_state(remaining, lot, &extension_commitment),
                 TOKEN_OUTPUT_SOMPI,
             ),
     )?;
@@ -44,12 +50,16 @@ pub fn run(artifact: &Artifact) -> DemoResult<()> {
 
     for step in 0..3 {
         let amount = remaining.min(lot);
-        let minted_state = token_state(&alice_public_key, amount);
+        let mut minted_state = token_state(&alice_public_key, amount);
+        minted_state.insert(
+            "extension_commitment".into(),
+            extension_commitment.to_vec().into(),
+        );
         let mint = builder.build(
             &TxContext::new()
                 .actor_input(
                     "PublicMint",
-                    minter_state(remaining, lot),
+                    minter_state(remaining, lot, &extension_commitment),
                     EntryCall::new("mint").args(args!(minted_state.clone())),
                     minter.outpoint,
                     minter.utxo,
@@ -58,7 +68,7 @@ pub fn run(artifact: &Artifact) -> DemoResult<()> {
                 .input(demo_outpoint(2, step), funding(), Vec::new(), 0)
                 .actor_output(
                     "PublicMint",
-                    minter_state(remaining - amount, lot),
+                    minter_state(remaining - amount, lot, &extension_commitment),
                     CovenantBinding::new(0, minter.covenant_id),
                     TOKEN_OUTPUT_SOMPI,
                 )
@@ -78,7 +88,11 @@ pub fn run(artifact: &Artifact) -> DemoResult<()> {
 
         // Spend the actual minted output through the unchanged token actor.
         let token = CovenantOutput::from_tx(&mint, 1)?;
-        let recipient = token_state(&bob_public_key, amount);
+        let mut recipient = token_state(&bob_public_key, amount);
+        recipient.insert(
+            "extension_commitment".into(),
+            extension_commitment.to_vec().into(),
+        );
         let transfer = EntryCall::new("transfer").args_with(|tx, index| {
             let mut witness = vec![0x00];
             witness.extend(sign_input(tx, index, &alice));

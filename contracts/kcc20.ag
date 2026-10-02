@@ -16,24 +16,14 @@ const byte BORROW_HASH_CHAIN = 0x03;
 
 const int MAX_DELEGATES = 2; // MAX_TOKEN_INPUTS - 1.
 const int MAX_TOKEN_OUTPUTS = 3;
-
+// Scheme IDs are contiguous from zero, so an unsigned upper-bound check suffices.
+// unsigned() interprets bytes as 0..255, including values with the high bit set.
 fn require_valid_owner_scheme(byte owner_scheme) {
-    require(
-        owner_scheme == OWNER_P2PK_SCHNORR
-            || owner_scheme == OWNER_P2PKH_SCHNORR
-            || owner_scheme == OWNER_P2PKH_ECDSA
-            || owner_scheme == OWNER_P2SH
-            || owner_scheme == OWNER_COVENANT_ID
-    );
+    require(unsigned(owner_scheme) <= unsigned(OWNER_COVENANT_ID));
 }
 
 fn require_valid_borrow_scheme(byte borrow_scheme) {
-    require(
-        borrow_scheme == BORROW_DISABLED
-            || borrow_scheme == BORROW_AMOUNT_THRESHOLD
-            || borrow_scheme == BORROW_SCHNORR_SIGNATURE
-            || borrow_scheme == BORROW_HASH_CHAIN
-    );
+    require(unsigned(borrow_scheme) <= unsigned(BORROW_HASH_CHAIN));
 }
 
 fn p2pkh_hash(byte[] public_key) -> byte[32] {

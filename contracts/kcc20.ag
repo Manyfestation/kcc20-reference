@@ -16,8 +16,15 @@ const byte BORROW_HASH_CHAIN = 0x03;
 
 const int MAX_DELEGATES = 2; // MAX_TOKEN_INPUTS - 1.
 const int MAX_TOKEN_OUTPUTS = 3;
-// Scheme IDs are contiguous from zero, so an unsigned upper-bound check suffices.
-// unsigned() interprets bytes as 0..255, including values with the high bit set.
+
+// Owner schemes (0x00..0x04) and borrow schemes (0x00..0x03) are contiguous
+// from zero, so an unsigned upper-bound check accepts exactly the valid IDs.
+//
+// Keep both operands unsigned: signed(0xff) is -127 and signed(0x80) is negative
+// zero. Using signed() for the input admits invalid IDs; even adding >= 0 still
+// admits 0x80. The constant upper bounds (0x04 and 0x03) have the same value with
+// either cast, but unsigned() on both sides expresses the intended 0..255 domain
+// and also handles constant upper bounds >= 0x80.
 fn require_valid_owner_scheme(byte owner_scheme) {
     require(unsigned(owner_scheme) <= unsigned(OWNER_COVENANT_ID));
 }

@@ -486,6 +486,35 @@ fn transfer_preserves_any_shared_extension_commitment() {
 }
 
 #[test]
+fn transfer_validates_output_schemes_across_full_byte_domain() {
+    for (field, minimum, maximum) in [
+        ("owner_scheme", OWNER_P2PK_SCHNORR, OWNER_COVENANT_ID),
+        ("borrow_scheme", BORROW_DISABLED, BORROW_HASH_CHAIN),
+    ] {
+        for scheme in u8::MIN..=u8::MAX {
+            let mut transfer = Transfer::normal();
+            transfer.outputs[0].insert(field.into(), scheme.into());
+            let result = transfer.build();
+
+            if (minimum..=maximum).contains(&scheme) {
+                assert!(
+                    result.is_ok(),
+                    "valid {field} {scheme:#04x} was rejected: {result:?}",
+                );
+            } else {
+                assert!(
+                    matches!(
+                        &result,
+                        Err(BuilderError::InputScript { input_index: 0, .. })
+                    ),
+                    "invalid {field} {scheme:#04x} must fail in the VM at input 0: {result:?}",
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn transfer_rejects_invalid_output_policies() {
     for field in ["owner_scheme", "borrow_scheme"] {
         let mut transfer = Transfer::normal();

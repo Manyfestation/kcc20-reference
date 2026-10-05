@@ -20,7 +20,7 @@ use kaspa_consensus_core::{
 };
 use kaspa_txscript::{
     pay_to_script_hash_script, pay_to_script_hash_signature_script_with_flags,
-    script_builder::ScriptBuilder,
+    script_builder::ScriptBuilder, serialize_i64,
 };
 use secp256k1::{Keypair, Message, Secp256k1};
 
@@ -54,6 +54,12 @@ fn chain_guard(next_guard: &[u8; 32], key: &Keypair) -> [u8; 32] {
     let mut preimage = next_guard.to_vec();
     preimage.extend(key.x_only_public_key().0.serialize());
     *blake3::hash(&preimage).as_bytes()
+}
+
+fn threshold_guard(threshold: i64) -> [u8; 32] {
+    let mut guard = [0x42; 32];
+    guard[..8].copy_from_slice(&serialize_i64(threshold, Some(8)).unwrap());
+    guard
 }
 
 fn schnorr_signature(
@@ -521,13 +527,23 @@ fn transfer_rejects_invalid_output_policies() {
         transfer.outputs[0].insert(field.into(), 0xffu8.into());
         transfer.rejects_at(0);
     }
-    let mut transfer = Transfer::normal();
-    let mut guard = [0u8; 32];
-    guard[0] = 1;
-    guard[7] = 0x80; // Eight-byte signed-magnitude encoding of -1.
-    transfer.outputs[0].insert("borrow_scheme".into(), BORROW_AMOUNT_THRESHOLD.into());
-    transfer.outputs[0].insert("borrow_guard".into(), guard.to_vec().into());
-    transfer.rejects_at(0);
+}
+
+#[test]
+fn normal_transfers_accept_negative_threshold_guards() {
+    for threshold in [-i64::MAX, -10, -1] {
+        let mut transfer = Transfer::normal();
+        transfer.outputs[0].insert("borrow_scheme".into(), BORROW_AMOUNT_THRESHOLD.into());
+        transfer.outputs[0].insert(
+            "borrow_guard".into(),
+            threshold_guard(threshold).to_vec().into(),
+        );
+        transfer.build().unwrap();
+
+        // The owner can also spend the state without invoking its borrow policy.
+        transfer.inputs[0].state = transfer.outputs[0].clone();
+        transfer.build().unwrap();
+    }
 }
 
 #[test]
@@ -556,6 +572,25 @@ fn threshold_borrow_requires_a_strict_increase() {
     let mut transfer = Transfer::borrowed(1);
     transfer.borrow_policy(BORROW_AMOUNT_THRESHOLD, [0; 32]);
     transfer.build().unwrap();
+}
+
+#[test]
+fn threshold_borrow_clamps_nonpositive_thresholds_to_zero() {
+    for threshold in [-i64::MAX, -10, -1, 0] {
+        let mut guard = threshold_guard(threshold);
+        if threshold == 0 {
+            guard[7] = 0x80; // Fixed-width signed-magnitude negative zero.
+        }
+        for increase in [-1, 0, 1] {
+            let mut transfer = Transfer::borrowed(increase);
+            transfer.borrow_policy(BORROW_AMOUNT_THRESHOLD, guard);
+            if increase > 0 {
+                transfer.build().unwrap();
+            } else {
+                transfer.rejects_at(0);
+            }
+        }
+    }
 }
 
 #[test]

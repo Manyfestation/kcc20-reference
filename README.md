@@ -60,7 +60,7 @@ commitment, chosen at launch and preserved by every mint. The example selects
 disabled borrowing and a commitment of 32 zero bytes. Zero is a convention of this
 deployment, with no special KCC20 meaning. The commitment fixes the extension
 identity; the minter does not interpret or validate the underlying extended state.
-The KCC20 transfer entry still validates borrowing thresholds.
+KCC20 interprets the threshold only when the token is borrowed.
 There is no issuer key, fee policy, or administrative entrypoint.
 
 A single-minter deployment should start with only one `PublicMint` actor and no
@@ -119,11 +119,11 @@ Only the leader can be borrowed. Its successor is the first output in covenant-f
 | Byte | Scheme | Guard | Authorization after the path byte |
 | --- | --- | --- | --- |
 | `0x00` | `disabled/v1` | Unused | Rejected |
-| `0x01` | `amount-threshold/v1` | Non-negative threshold in the first eight bytes | Empty; increase must exceed the threshold |
+| `0x01` | `amount-threshold/v1` | Signed threshold in the first eight bytes | Empty; increase must exceed the effective threshold |
 | `0x02` | `schnorr-signature/v1` | Schnorr public key | 65-byte transaction signature |
 | `0x03` | `hash-chain/v1` | Current chain commitment | 32-byte next guard, 32-byte one-time public key, 65-byte transaction signature |
 
-Thresholds use KCC1's eight-byte little-endian signed-magnitude payload. The remaining guard bytes do not affect the threshold. Threshold and signature borrows preserve the complete guard.
+Thresholds use KCC1's eight-byte little-endian signed-magnitude payload. Negative thresholds are treated as zero when borrowing, so borrowing always requires a strictly positive token increase. Normal owner-authorized transfers may create or preserve any threshold payload. The remaining guard bytes do not affect the threshold. Threshold and signature borrows preserve the complete guard.
 
 A hash-chain borrow requires `BLAKE3(next_guard || one_time_public_key) == borrow_guard` and a valid transaction signature by that key. Its successor stores `next_guard`. Link reuse is rejected after advancement; independent UTXOs should use independent chains, and owners can deliberately reset or copy guards through normal transfers.
 

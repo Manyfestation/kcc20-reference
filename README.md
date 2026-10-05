@@ -25,8 +25,9 @@ transaction spends the actual outputs of the first, advancing the chain to its
 terminal guard. Both transactions are validated locally; nothing is submitted.
 
 The `mint` example builds `contracts/public_mint.ag` into `build/public-mint/`.
-It launches a minter with an allowance of 25 tokens and a per-mint limit of 10,
-then chooses to mint **10, 10, 5** tokens. Smaller positive amounts are also allowed.
+It launches a minter with an allowance of 25 tokens, a per-mint limit of 10,
+and a seeder in the same covenant family, then chooses to mint **10, 10, 5**
+tokens. Smaller positive amounts are also allowed.
 Each mint spends the previous minter output;
 Alice transfers each actual minted token output to Bob. Funding inputs are
 synthetic OP_TRUE UTXOs. Genesis, mints, and transfers are executed locally;
@@ -34,12 +35,14 @@ nothing is submitted to a network.
 
 ## Public mint
 
-`KCC20PublicMint` imports the unchanged `KCC20` actor and adds `PublicMint`:
+`KCC20PublicMint` imports the unchanged `KCC20` actor and adds `PublicMint`
+and `TokenSeed`:
 
 ```text
 PublicMintState {
     remaining:            int
     mint_amount:          int
+    owner:                pubkey
     extension_commitment: byte[32]
 }
 ```
@@ -47,10 +50,10 @@ PublicMintState {
 `mint(KCC20State recipient_state)` is permissionless.
 The caller supplies the recipient's complete token state. Its amount must be
 positive and no greater than either `mint_amount` or `remaining`. Each call reduces
-the successor minter's allowance by the recipient amount. The per-mint limit and
-extension commitment stay fixed, and calls after exhaustion fail. The initial
-allowance is the supply available to that minter, so no separate cap or minted
-counter is stored.
+the successor minter's allowance by the recipient amount. The per-mint limit,
+deposit owner, and extension commitment stay fixed, and calls after exhaustion
+fail. The initial allowance is the supply available to that minter, so no
+separate cap or minted counter is stored.
 
 The entry creates exactly one minter successor and one KCC20 recipient output.
 It preserves the minter's sompi value; the caller funds the new token output and
@@ -61,17 +64,55 @@ disabled borrowing and a commitment of 32 zero bytes. Zero is a convention of th
 deployment, with no special KCC20 meaning. The commitment fixes the extension
 identity; the minter does not interpret or validate the underlying extended state.
 KCC20 interprets the threshold only when the token is borrowed.
-There is no issuer key, fee policy, or administrative entrypoint.
+The Schnorr `owner` key controls deposit reclaim; minting remains permissionless.
 
-A single-minter deployment should start with only one `PublicMint` actor and no
-initial token balances. The advertised supply must be checked against the full
-genesis output group. All quantities are integer base units in the KCC1 range.
+`split(int take, pubkey new_owner)` is also permissionless. The caller chooses a
+positive allowance no greater than half of `remaining`. The first successor keeps
+the original owner and KAS value; the second gets `take`, the chosen owner, and a
+caller-funded, unrestricted KAS value. Both retain the mint cap and extension
+commitment. The half limit applies per split.
+
+`reclaim(sig owner_signature)` releases an exhausted minter's deposit, requiring
+`remaining == 0`. In `reclaim_into()`, the surviving minter leads and consumes a
+retiring minter with the same mint cap and extension commitment. It adds the
+retiring minter's allowance while preserving its own owner and KAS. The retiring
+input uses `reclaim_delegator(sig owner_signature)` to authorize releasing its
+deposit; the survivor needs no signature. Reclaim authorizes ordinary
+outputs through the retiring owner's transaction signature; the contract does
+not fix a payout address.
+
+A single-minter deployment should start with one `PublicMint`, at least one
+`TokenSeed`, and no initial token balances. The advertised supply and initial
+seeder presence must be checked against the full genesis output group. All
+quantities are integer base units in the KCC1 range.
 
 The mintable app has its own compiled artifact. Argent adds template context and
-witness arguments when linking the two actors, so its physical ABI and dispatch
+witness arguments when linking the actors, so its physical ABI and dispatch
 tags differ from the standalone reference. Use `build/public-mint/artifact.json`
 to construct its transactions. The source-level KCC20 state and transfer logic
 are shared with the standalone reference below.
+
+## Zero-token receiving UTXOs
+
+`TokenSeed` stores a Schnorr deposit `owner` and a fixed `extension_commitment`.
+Its permissionless `create(KCC20State recipient_state)` entry requires amount
+zero, supported policy schemes, and the seed's extension commitment. It recreates
+the seed with unchanged state and KAS, while the caller chooses and funds the
+recipient's KAS deposit. An amount-threshold guard of zero lets that recipient
+receive any positive token payment through borrowed receive.
+
+`split(pubkey new_owner)` preserves the first seed's owner and KAS and creates a
+second seed with the chosen owner and unrestricted KAS. In `reclaim()`, the
+surviving seed leads and consumes a retiring seed with the same extension
+commitment, then recreates itself with unchanged state and KAS. The retiring
+input uses `reclaim_delegator(sig owner_signature)`; the survivor needs no
+signature. There is no reclaim path for a lone seed:
+every seed transition leaves at least one seed alive.
+
+Seeds must be included in the token's original genesis family; a new genesis
+produces a different covenant ID. They remain available after all minters are
+exhausted or reclaimed. `contracts/token_seed.ag` also defines the two-actor
+`KCC20Seed` app for deployments with initial token balances and no public minter.
 
 ## Reference configuration
 
@@ -133,6 +174,11 @@ Tests encode transactions directly and execute them in the covenant-enabled VM. 
 
 ABI regression tests pin state field order and the KCC1 dispatch tags.
 
+Three initial lifecycle tests cover minter split, mint, and allowance return;
+exhausted deposit reclaim; and seed split, zero-token creation, borrowed receive,
+and reclaim with a surviving seed. They include a few basic rejection checks;
+the new entrypoints do not yet have a full conformance suite.
+
 The standalone contract implements transfers within an established token family.
 The public-mint tests cover local genesis, successive issuance and transfer,
 caller-selected amounts and borrow guards, fixed extension commitments, exhaustion,
@@ -143,11 +189,13 @@ wallet synchronization, and are not an independent security audit.
 ## Files
 
 - `contracts/kcc20.ag`: canonical contract.
-- `contracts/public_mint.ag`: two-actor public-mint app.
+- `contracts/public_mint.ag`: public-mint app with minter split and reclaim.
+- `contracts/token_seed.ag`: zero-token creation, seed split and reclaim, and two-actor seeding app.
 - `src/bin/kcc20/main.rs`: threshold-borrow example.
 - `src/bin/kcc20/chain_borrow.rs`: two successive hash-chain borrowed receives.
 - `src/bin/kcc20/public_mint.rs`: local launch, mint, and transfer example.
 - `src/bin/kcc20/public_mint/tests.rs`: issuance tests.
+- `src/bin/kcc20/public_mint/tests/lifecycle.rs`: initial minter and seeder lifecycle tests.
 - `src/bin/kcc20/support.rs`: offline keys and transaction signing.
 - `src/bin/kcc20/tests.rs`: contract and ABI tests.
 

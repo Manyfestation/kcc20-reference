@@ -6,10 +6,23 @@ use kaspa_consensus_core::tx::{ScriptPublicKey, UtxoEntry};
 
 use super::*;
 
-fn minter_state(remaining: i64, mint_amount: i64, extension_commitment: &[u8; 32]) -> TokenState {
+fn minter_state(
+    remaining: i64,
+    mint_amount: i64,
+    owner: &[u8; 32],
+    extension_commitment: &[u8; 32],
+) -> TokenState {
     state! {
         remaining: remaining,
         mint_amount: mint_amount,
+        owner: owner.to_vec(),
+        extension_commitment: extension_commitment.to_vec()
+    }
+}
+
+fn seeder_state(owner: &[u8; 32], extension_commitment: &[u8; 32]) -> TokenState {
+    state! {
+        owner: owner.to_vec(),
         extension_commitment: extension_commitment.to_vec()
     }
 }
@@ -40,7 +53,14 @@ pub fn run(artifact: &Artifact) -> DemoResult<()> {
                 0,
                 "launch::token",
                 "PublicMint",
-                minter_state(remaining, lot, &extension_commitment),
+                minter_state(remaining, lot, &alice_public_key, &extension_commitment),
+                TOKEN_OUTPUT_SOMPI,
+            )
+            .actor_genesis_output(
+                0,
+                "launch::token",
+                "TokenSeed",
+                seeder_state(&alice_public_key, &extension_commitment),
                 TOKEN_OUTPUT_SOMPI,
             ),
     )?;
@@ -59,7 +79,7 @@ pub fn run(artifact: &Artifact) -> DemoResult<()> {
             &TxContext::new()
                 .actor_input(
                     "PublicMint",
-                    minter_state(remaining, lot, &extension_commitment),
+                    minter_state(remaining, lot, &alice_public_key, &extension_commitment),
                     EntryCall::new("mint").args(args!(minted_state.clone())),
                     minter.outpoint,
                     minter.utxo,
@@ -68,7 +88,12 @@ pub fn run(artifact: &Artifact) -> DemoResult<()> {
                 .input(demo_outpoint(2, step), funding(), Vec::new(), 0)
                 .actor_output(
                     "PublicMint",
-                    minter_state(remaining - amount, lot, &extension_commitment),
+                    minter_state(
+                        remaining - amount,
+                        lot,
+                        &alice_public_key,
+                        &extension_commitment,
+                    ),
                     CovenantBinding::new(0, minter.covenant_id),
                     TOKEN_OUTPUT_SOMPI,
                 )

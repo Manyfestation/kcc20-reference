@@ -23,6 +23,10 @@ contract TokenSeed(
     int constant MAX_DELEGATES = 2;
     int constant MAX_TOKEN_OUTPUTS = 3;
 
+    // :: current template lengths
+    byte[4] constant gen__const_token_seed_prefix_len = byte[4](0x01000000);
+    byte[4] constant gen__const_token_seed_suffix_len = byte[4](0xc6040000);
+
     // :: state layouts
     struct KCC20State {
         // :: user declared fields
@@ -193,7 +197,11 @@ contract TokenSeed(
     }
 
     // :: leader entry (M:N)
-    entry reclaim(int gen__token_seed_prefix_len, int gen__token_seed_suffix_len) {
+    entry reclaim() {
+        // :: current template lengths
+        int gen__token_seed_prefix_len = int(gen__const_token_seed_prefix_len);
+        int gen__token_seed_suffix_len = int(gen__const_token_seed_suffix_len);
+
         // :: cov inputs
         byte[32] gen__cov_id = OpInputCovenantId(this.activeInputIndex);
         require(OpCovInputCount(gen__cov_id) == 2);
@@ -223,11 +231,11 @@ contract TokenSeed(
     }
 
     // :: delegate entry
-    entry reclaim_delegator(
-        sig owner_signature,
-        int gen__token_seed_prefix_len,
-        int gen__token_seed_suffix_len
-    ) {
+    entry reclaim_delegator(sig owner_signature) {
+        // :: current template lengths
+        int gen__token_seed_prefix_len = int(gen__const_token_seed_prefix_len);
+        int gen__token_seed_suffix_len = int(gen__const_token_seed_suffix_len);
+
         // :: cov inputs
         byte[32] gen__cov_id = OpInputCovenantId(this.activeInputIndex);
         require(OpCovInputCount(gen__cov_id) >= 2);

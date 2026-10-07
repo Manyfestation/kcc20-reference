@@ -87,8 +87,7 @@ seeder presence must be checked against the full genesis output group. All
 quantities are integer base units in the KCC1 range.
 
 `KCC20PublicMint` is the reference app, containing `KCC20`, `PublicMint`, and
-`TokenSeed`. Argent adds template context and witness arguments when linking
-the actors. Use `build/public-mint/artifact.json` to construct its transactions.
+`TokenSeed`. Use `build/public-mint/artifact.json` to construct its transactions.
 
 ## Zero-token receiving UTXOs
 
@@ -170,7 +169,8 @@ A hash-chain borrow requires `BLAKE3(next_guard || one_time_public_key) == borro
 
 Tests encode transactions directly and execute them in the covenant-enabled VM. This lets malformed cardinalities, role selections, witnesses, and continuations reach the contract without being rejected by a transaction builder first. The suite covers each owner scheme as leader and delegate, all borrow schemes, all supported input/output shapes, authorization failures, conservation, state preservation, and integer boundaries.
 
-ABI regression tests pin state field order and the KCC1 dispatch tags.
+ABI regression tests pin state field order, the standard transfer parameters,
+and the KCC1 dispatch tags.
 
 Three initial lifecycle tests cover minter split, mint, and allowance return;
 exhausted deposit reclaim; and seed split, zero-token creation, borrowed receive,

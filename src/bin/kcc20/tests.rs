@@ -367,9 +367,6 @@ impl Transfer {
             } else {
                 vec![witness.into()]
             };
-            let mut args = args;
-            args.push((prefix.len() as i64).into());
-            args.push((suffix.len() as i64).into());
             let args = encode_contract_entry_sig_script(abi, "KCC20", entry, &args)?;
             unsigned.tx.inputs[input_index].signature_script =
                 pay_to_script_hash_signature_script_with_flags(
@@ -1022,7 +1019,7 @@ fn covenant_id_authority_may_be_a_distinct_family() {
 }
 
 #[test]
-fn public_mint_preserves_kcc20_state_layout_and_dispatch_tags() {
+fn public_mint_preserves_kcc20_state_layout_and_transfer_abi() {
     let contract = &artifact().sil_abi.contracts["KCC20"];
     let fields: Vec<_> = contract
         .runtime_state
@@ -1042,14 +1039,47 @@ fn public_mint_preserves_kcc20_state_layout_and_dispatch_tags() {
             "extension_commitment"
         ]
     );
-    assert_eq!(
-        contract.entries["transfer"].dispatch_tag.to_hex(),
-        "fcac75b5"
-    );
-    assert_eq!(
-        contract.entries["transfer_delegator"].dispatch_tag.to_hex(),
-        "fa1fdf45"
-    );
+    for (entry, params) in [
+        ("transfer", vec!["next_states", "witness"]),
+        ("transfer_delegator", vec!["witness"]),
+    ] {
+        let entry = &contract.entries[entry];
+        assert_eq!(
+            entry
+                .params
+                .iter()
+                .map(|param| param.name.as_str())
+                .collect::<Vec<_>>(),
+            params,
+        );
+    }
+}
+
+#[test]
+fn kcc20_dispatch_tags_match_spec_vectors() {
+    // KCC-20's authoritative dispatch vectors.
+    // KCC-1 section 6.1 uses BLAKE3(signature)[0:4], with records expanded by field type.
+    let contract = &artifact().sil_abi.contracts["KCC20"];
+    for (entry, signature, expected_tag) in [
+        (
+            "transfer",
+            "transfer({int,byte[32],byte,byte,byte[32],byte[32]}[],byte[])",
+            [0x79, 0xc7, 0x1c, 0x23],
+        ),
+        (
+            "transfer_delegator",
+            "transfer_delegator(byte[])",
+            [0xfd, 0x3e, 0xf1, 0x4a],
+        ),
+    ] {
+        let digest = blake3::hash(signature.as_bytes());
+        assert_eq!(&digest.as_bytes()[..4], &expected_tag, "{entry} vector");
+        assert_eq!(
+            contract.entries[entry].dispatch_tag.as_bytes(),
+            &expected_tag,
+            "{entry} compiled dispatch tag",
+        );
+    }
 }
 
 #[test]

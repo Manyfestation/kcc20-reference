@@ -26,6 +26,10 @@ contract KCC20(
     int constant MAX_DELEGATES = 2;
     int constant MAX_TOKEN_OUTPUTS = 3;
 
+    // :: current template lengths
+    byte[4] constant gen__const_kcc20_prefix_len = byte[4](0x01000000);
+    byte[4] constant gen__const_kcc20_suffix_len = byte[4](0x2d0f0000);
+
     // :: state layouts
     struct KCC20State {
         // :: user declared fields
@@ -115,12 +119,11 @@ contract KCC20(
 
     // :: entrypoints
     // :: leader entry (M:N)
-    entry transfer(
-        KCC20State[] next_states,
-        byte[] witness,
-        int gen__kcc20_prefix_len,
-        int gen__kcc20_suffix_len
-    ) {
+    entry transfer(KCC20State[] next_states, byte[] witness) {
+        // :: current template lengths
+        int gen__kcc20_prefix_len = int(gen__const_kcc20_prefix_len);
+        int gen__kcc20_suffix_len = int(gen__const_kcc20_suffix_len);
+
         // :: cov inputs
         byte[32] gen__cov_id = OpInputCovenantId(this.activeInputIndex);
         require(OpCovInputIdx(gen__cov_id, 0) == this.activeInputIndex);
@@ -241,7 +244,11 @@ contract KCC20(
     }
 
     // :: delegate entry
-    entry transfer_delegator(byte[] witness, int gen__kcc20_prefix_len, int gen__kcc20_suffix_len) {
+    entry transfer_delegator(byte[] witness) {
+        // :: current template lengths
+        int gen__kcc20_prefix_len = int(gen__const_kcc20_prefix_len);
+        int gen__kcc20_suffix_len = int(gen__const_kcc20_suffix_len);
+
         // :: cov inputs
         byte[32] gen__cov_id = OpInputCovenantId(this.activeInputIndex);
         require(OpCovInputCount(gen__cov_id) >= 2);

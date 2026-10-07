@@ -113,24 +113,28 @@ dependencies = [
 [[package]]
 name = "argent"
 version = "0.1.0"
-source = "git+https://github.com/argent-lang/argent?rev=94f249a75dd25a192ae2625d95f7a6f96974abcf#94f249a75dd25a192ae2625d95f7a6f96974abcf"
+source = "git+https://github.com/argent-lang/argent?rev=232c6ee621107846e81146f853034464f811db15#232c6ee621107846e81146f853034464f811db15"
 dependencies = [
  "argent-artifact",
+ "argent-genesis",
  "argent-runtime",
  "blake2b_simd",
+ "clap",
  "colored",
  "kaspa-consensus-core",
  "kaspa-txscript",
+ "serde",
  "serde_json",
  "silverscript-abi",
  "silverscript-lang",
+ "tempfile",
  "thiserror 2.0.20",
 ]
 
 [[package]]
 name = "argent-artifact"
 version = "0.1.0"
-source = "git+https://github.com/argent-lang/argent?rev=94f249a75dd25a192ae2625d95f7a6f96974abcf#94f249a75dd25a192ae2625d95f7a6f96974abcf"
+source = "git+https://github.com/argent-lang/argent?rev=232c6ee621107846e81146f853034464f811db15#232c6ee621107846e81146f853034464f811db15"
 dependencies = [
  "blake2b_simd",
  "blake3",
@@ -143,9 +147,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "argent-genesis"
+version = "0.1.0"
+source = "git+https://github.com/argent-lang/argent?rev=232c6ee621107846e81146f853034464f811db15#232c6ee621107846e81146f853034464f811db15"
+dependencies = [
+ "argent-artifact",
+ "argent-runtime",
+ "kaspa-consensus-core",
+ "kaspa-txscript",
+ "serde",
+ "serde_json",
+ "silverscript-abi",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "argent-runtime"
 version = "0.1.0"
-source = "git+https://github.com/argent-lang/argent?rev=94f249a75dd25a192ae2625d95f7a6f96974abcf#94f249a75dd25a192ae2625d95f7a6f96974abcf"
+source = "git+https://github.com/argent-lang/argent?rev=232c6ee621107846e81146f853034464f811db15#232c6ee621107846e81146f853034464f811db15"
 dependencies = [
  "argent-artifact",
  "blake2b_simd",
@@ -3446,7 +3465,7 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 [[package]]
 name = "silverscript-abi"
 version = "0.1.0"
-source = "git+https://github.com/kaspanet/silverscript?rev=c7d17a15ac88610d013ec9ffffa9520aeb69929b#c7d17a15ac88610d013ec9ffffa9520aeb69929b"
+source = "git+https://github.com/kaspanet/silverscript?rev=3ed973335b59269293564805cc2c58a14595ec03#3ed973335b59269293564805cc2c58a14595ec03"
 dependencies = [
  "blake3",
  "faster-hex 0.10.0",
@@ -3459,8 +3478,8 @@ dependencies = [
 
 [[package]]
 name = "silverscript-lang"
-version = "0.1.0"
-source = "git+https://github.com/kaspanet/silverscript?rev=c7d17a15ac88610d013ec9ffffa9520aeb69929b#c7d17a15ac88610d013ec9ffffa9520aeb69929b"
+version = "1.0.0"
+source = "git+https://github.com/kaspanet/silverscript?rev=3ed973335b59269293564805cc2c58a14595ec03#3ed973335b59269293564805cc2c58a14595ec03"
 dependencies = [
  "blake2b_simd",
  "blake3",
@@ -3569,6 +3588,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "tempfile"
+version = "3.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
+dependencies = [
+ "fastrand",
+ "getrandom 0.3.4",
+ "once_cell",
+ "rustix",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

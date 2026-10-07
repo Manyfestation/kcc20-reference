@@ -263,6 +263,8 @@ contract PublicMint(
         require(OpAuthOutputCount(this.activeInputIndex) == 1);
         // :: output minter: PublicMint
         int gen__minter_output_idx = OpAuthOutputIdx(this.activeInputIndex, 0);
+        // :: leader authorizes all covenant continuations (rule 5)
+        require(OpCovOutputCount(gen__cov_id) == OpAuthOutputCount(this.activeInputIndex));
 
         require(remaining >= 0);
         require(gen__retiring_state.remaining >= 0);

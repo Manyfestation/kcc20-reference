@@ -210,6 +210,8 @@ contract TokenSeed(
         require(OpAuthOutputCount(this.activeInputIndex) == 1);
         // :: output seeder: TokenSeed
         int gen__seeder_output_idx = OpAuthOutputIdx(this.activeInputIndex, 0);
+        // :: leader authorizes all covenant continuations (rule 5)
+        require(OpCovOutputCount(gen__cov_id) == OpAuthOutputCount(this.activeInputIndex));
 
         require(gen__retiring_state.extension_commitment == extension_commitment);
         require(tx.outputs[gen__seeder_output_idx].value == tx.inputs[this.activeInputIndex].value);

@@ -12,7 +12,7 @@ cargo test --locked --all-targets
 cargo clippy --locked --all-targets -- -D warnings
 ```
 
-`rust-toolchain.toml` selects Rust 1.94.1. Compiler, runtime, and consensus revisions are pinned in `Cargo.toml`; `Cargo.lock` pins the dependency graph. The example writes its compiled artifact to `build/artifact.json`.
+`rust-toolchain.toml` selects Rust 1.94.1. Compiler, runtime, and consensus revisions are pinned in `Cargo.toml`; `Cargo.lock` pins the dependency graph. All examples compile `KCC20PublicMint` from `contracts/public_mint.ag` into `build/public-mint/`.
 
 The example transfers 11 tokens from Alice into Bob's existing token UTXO. Bob's amount increases from 200 to 211, exceeding his borrow threshold of 10. Alice signs the delegate input and receives 89 tokens as change. Both successor outputs preserve the inputs' 1,000 sompi values.
 
@@ -86,11 +86,9 @@ A single-minter deployment should start with one `PublicMint`, at least one
 seeder presence must be checked against the full genesis output group. All
 quantities are integer base units in the KCC1 range.
 
-The mintable app has its own compiled artifact. Argent adds template context and
-witness arguments when linking the actors, so its physical ABI and dispatch
-tags differ from the standalone reference. Use `build/public-mint/artifact.json`
-to construct its transactions. The source-level KCC20 state and transfer logic
-are shared with the standalone reference below.
+`KCC20PublicMint` is the reference app, containing `KCC20`, `PublicMint`, and
+`TokenSeed`. Argent adds template context and witness arguments when linking
+the actors. Use `build/public-mint/artifact.json` to construct its transactions.
 
 ## Zero-token receiving UTXOs
 
@@ -111,12 +109,12 @@ every seed transition leaves at least one seed alive.
 
 Seeds must be included in the token's original genesis family; a new genesis
 produces a different covenant ID. They remain available after all minters are
-exhausted or reclaimed. `contracts/token_seed.ag` also defines the two-actor
-`KCC20Seed` app for deployments with initial token balances and no public minter.
+exhausted or reclaimed.
 
 ## Reference configuration
 
-- Actor: `KCC20` in app `KCC20Reference`.
+- App: `KCC20PublicMint`, containing `KCC20`, `PublicMint`, and `TokenSeed`.
+- Token actor: `KCC20`.
 - Leader: `transfer(KCC20State[], byte[])`.
 - Delegate: `transfer_delegator(byte[])`.
 - Transfer bounds: one to three token inputs and one to three token outputs.
@@ -179,7 +177,7 @@ exhausted deposit reclaim; and seed split, zero-token creation, borrowed receive
 and reclaim with a surviving seed. They include a few basic rejection checks;
 the new entrypoints do not yet have a full conformance suite.
 
-The standalone contract implements transfers within an established token family.
+Transfer tests exercise the KCC20 actor in the complete public-mint app.
 The public-mint tests cover local genesis, successive issuance and transfer,
 caller-selected amounts and borrow guards, fixed extension commitments, exhaustion,
 integer boundaries, altered states, output shape, and preservation of
@@ -188,9 +186,9 @@ wallet synchronization, and are not an independent security audit.
 
 ## Files
 
-- `contracts/kcc20.ag`: canonical contract.
+- `contracts/kcc20.ag`: token state, authorization schemes, and transfer actor.
 - `contracts/public_mint.ag`: public-mint app with minter split and reclaim.
-- `contracts/token_seed.ag`: zero-token creation, seed split and reclaim, and two-actor seeding app.
+- `contracts/token_seed.ag`: zero-token creation, seed split and reclaim actor.
 - `src/bin/kcc20/main.rs`: threshold-borrow example.
 - `src/bin/kcc20/chain_borrow.rs`: two successive hash-chain borrowed receives.
 - `src/bin/kcc20/public_mint.rs`: local launch, mint, and transfer example.
@@ -200,3 +198,12 @@ wallet synchronization, and are not an independent security audit.
 - `src/bin/kcc20/tests.rs`: contract and ABI tests.
 
 The generated artifact and this configuration describe how to construct reference transactions. KCC20, KCC1, and KCC2 define the normative conventions.
+
+The generated SIL, artifact, and manifest for `KCC20PublicMint` are tracked in
+`fixtures/public-mint/` so contract and compiler changes can be reviewed in Git.
+Temporary build output stays in the ignored `build/` directory. Regenerate the
+pinned fixtures with:
+
+```sh
+cargo run --locked --example build_contracts
+```

@@ -1,5 +1,3 @@
-use std::sync::OnceLock;
-
 use argent_runtime::{BuilderError, BuilderResult, execute_transaction_with_covenants};
 use kaspa_consensus_core::tx::Transaction;
 
@@ -8,15 +6,7 @@ use super::*;
 mod lifecycle;
 
 fn artifact() -> &'static Artifact {
-    static ARTIFACT: OnceLock<Artifact> = OnceLock::new();
-    ARTIFACT.get_or_init(|| {
-        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-        build_file(
-            root.join("contracts/public_mint.ag"),
-            root.join("build/test-public-mint"),
-        )
-        .expect("mintable app compiles")
-    })
+    super::super::tests::artifact()
 }
 
 fn recipient_state(amount: i64) -> TokenState {

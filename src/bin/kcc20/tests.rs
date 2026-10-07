@@ -3,7 +3,6 @@ use std::sync::OnceLock;
 use argent::{
     artifact::Artifact,
     codec::{encode_contract_entry_sig_script, encode_runtime_state_script},
-    compile_inline,
 };
 use argent_runtime::{
     BuilderError, BuilderResult, IntoArtifactValue, covenant_engine_flags,
@@ -37,8 +36,12 @@ const BORROW_HASH_CHAIN: u8 = 0x03;
 pub(super) fn artifact() -> &'static Artifact {
     static ARTIFACT: OnceLock<Artifact> = OnceLock::new();
     ARTIFACT.get_or_init(|| {
-        compile_inline("kcc20.ag", include_str!("../../../contracts/kcc20.ag"))
-            .expect("reference contract compiles")
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        build_file(
+            root.join("contracts/public_mint.ag"),
+            root.join("build/test-reference"),
+        )
+        .expect("public-mint app compiles")
     })
 }
 
@@ -286,7 +289,12 @@ impl Transfer {
             .script_parts(&contract.compiled.bytecode)
             .expect("compiled contract has a state span");
         let redeem_script = |state: &TokenState| -> BuilderResult<Vec<u8>> {
-            let state = encode_runtime_state_script(abi, &contract.runtime_state, state)?;
+            let mut runtime_state = state.clone();
+            runtime_state.insert(
+                "gen__kcc20_template".into(),
+                contract.compiled.template_hash.to_vec().into(),
+            );
+            let state = encode_runtime_state_script(abi, &contract.runtime_state, &runtime_state)?;
             Ok([prefix, state.as_slice(), suffix].concat())
         };
         let mut inputs = Vec::new();
@@ -359,6 +367,9 @@ impl Transfer {
             } else {
                 vec![witness.into()]
             };
+            let mut args = args;
+            args.push((prefix.len() as i64).into());
+            args.push((suffix.len() as i64).into());
             let args = encode_contract_entry_sig_script(abi, "KCC20", entry, &args)?;
             unsigned.tx.inputs[input_index].signature_script =
                 pay_to_script_hash_signature_script_with_flags(
@@ -1011,7 +1022,7 @@ fn covenant_id_authority_may_be_a_distinct_family() {
 }
 
 #[test]
-fn reference_preserves_kcc20_state_layout_and_dispatch_tags() {
+fn public_mint_preserves_kcc20_state_layout_and_dispatch_tags() {
     let contract = &artifact().sil_abi.contracts["KCC20"];
     let fields: Vec<_> = contract
         .runtime_state
@@ -1022,6 +1033,7 @@ fn reference_preserves_kcc20_state_layout_and_dispatch_tags() {
     assert_eq!(
         fields,
         [
+            "gen__kcc20_template",
             "amount",
             "owner",
             "owner_scheme",
@@ -1032,11 +1044,11 @@ fn reference_preserves_kcc20_state_layout_and_dispatch_tags() {
     );
     assert_eq!(
         contract.entries["transfer"].dispatch_tag.to_hex(),
-        "79c71c23"
+        "fcac75b5"
     );
     assert_eq!(
         contract.entries["transfer_delegator"].dispatch_tag.to_hex(),
-        "fd3ef14a"
+        "fa1fdf45"
     );
 }
 

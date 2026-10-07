@@ -59,8 +59,3 @@ actor TokenSeed owns TokenSeedState {
         require(checkSig(owner_signature, owner));
     }
 }
-
-app KCC20Seed {
-    actor KCC20;
-    actor TokenSeed;
-}

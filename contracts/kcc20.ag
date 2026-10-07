@@ -194,7 +194,3 @@ actor KCC20 owns KCC20State {
         require_owner_authorized(owner, owner_scheme, witness);
     }
 }
-
-app KCC20Reference {
-    actor KCC20;
-}

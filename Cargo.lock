@@ -2225,6 +2225,7 @@ dependencies = [
  "kaspa-consensus-core",
  "kaspa-txscript",
  "secp256k1",
+ "serde_json",
 ]
 
 [[package]]

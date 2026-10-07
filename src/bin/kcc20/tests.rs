@@ -25,6 +25,8 @@ use secp256k1::{Keypair, Message, Secp256k1};
 
 use super::*;
 
+mod conformance_vectors;
+
 const PATH_NORMAL: u8 = 0x00;
 const OWNER_P2PKH_SCHNORR: u8 = 0x01;
 const OWNER_P2PKH_ECDSA: u8 = 0x02;

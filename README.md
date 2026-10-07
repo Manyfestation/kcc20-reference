@@ -147,6 +147,16 @@ and integer boundaries. Output scheme validation covers all 256 byte values.
 ABI regression tests pin state field order, the standard transfer parameters,
 and the KCC1 dispatch tags.
 
+Conformance tests use the KCC-20 vector snapshot in
+`fixtures/kcc20/conformance.json`. They compare ABI, encoding, and hash vectors
+byte for byte and execute transfer and borrowed-receive cases in the VM.
+The vectors' placeholder signing keys and signatures are replaced with real
+ones for VM execution; related key commitments are recomputed. Run them with:
+
+```sh
+cargo test --locked --all-targets conformance_ -- --nocapture
+```
+
 The public-mint tests cover local genesis, successive issuance and transfer,
 caller-selected amounts and borrow guards, fixed extension commitments, exhaustion,
 integer boundaries, altered states, output shape, and preservation of
@@ -186,4 +196,5 @@ cargo run --locked --example build_contracts
 - [src/bin/kcc20/public_mint/tests/lifecycle.rs](src/bin/kcc20/public_mint/tests/lifecycle.rs): initial minter and seeder lifecycle tests.
 - [src/bin/kcc20/support.rs](src/bin/kcc20/support.rs): offline keys and transaction signing.
 - [src/bin/kcc20/tests.rs](src/bin/kcc20/tests.rs): contract and ABI tests.
+- [src/bin/kcc20/tests/conformance_vectors.rs](src/bin/kcc20/tests/conformance_vectors.rs): spec vector encoding, hash, and VM tests.
 - [examples/build_contracts.rs](examples/build_contracts.rs): fixture regeneration.

@@ -170,6 +170,16 @@ the split and reclaim entrypoints do not yet have a full conformance suite.
 These offline tests do not exercise network submission or wallet
 synchronization, and are not an independent security audit.
 
+## KCC20 artifact
+
+[fixtures/public-mint/kcc20.json](fixtures/public-mint/kcc20.json) describes this
+token's KCC20 configuration: its transfer and delegator entrypoints, supported
+owner-scheme bytes, and maximum token inputs and outputs per transfer.
+
+Its `program.artifact` points to the sibling `artifact.json`, which provides the
+compiled contracts, state layouts, and ABI. Clients use both files to construct
+transactions.
+
 ## Artifacts
 
 The examples compile the app into `build/public-mint/`. Use
@@ -198,3 +208,4 @@ cargo run --locked --example build_contracts
 - [src/bin/kcc20/tests.rs](src/bin/kcc20/tests.rs): contract and ABI tests.
 - [src/bin/kcc20/tests/conformance_vectors.rs](src/bin/kcc20/tests/conformance_vectors.rs): spec vector encoding, hash, and VM tests.
 - [examples/build_contracts.rs](examples/build_contracts.rs): fixture regeneration.
+- [fixtures/public-mint/kcc20.json](fixtures/public-mint/kcc20.json): concrete reference artifact.

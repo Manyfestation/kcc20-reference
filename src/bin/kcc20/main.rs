@@ -50,15 +50,12 @@ fn main() -> DemoResult<()> {
     if arguments.next().is_some() {
         return Err("usage: kcc20 [threshold|hash-chain|mint]".into());
     }
-    if example.as_deref() == Some("mint") {
-        let artifact = build_file(
-            root.join("contracts/public_mint.ag"),
-            root.join("build/public-mint"),
-        )?;
-        return public_mint::run(&artifact);
-    }
-    let artifact = build_file(root.join("contracts/kcc20.ag"), root.join("build"))?;
+    let artifact = build_file(
+        root.join("contracts/public_mint.ag"),
+        root.join("build/public-mint"),
+    )?;
     match example.as_deref() {
+        Some("mint") => return public_mint::run(&artifact),
         Some("hash-chain") => return chain_borrow::run(&artifact),
         None | Some("threshold") => {}
         Some(_) => return Err("usage: kcc20 [threshold|hash-chain|mint]".into()),

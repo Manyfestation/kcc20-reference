@@ -3,7 +3,6 @@ use std::sync::OnceLock;
 use argent::{
     artifact::Artifact,
     codec::{encode_contract_entry_sig_script, encode_runtime_state_script},
-    compile_inline,
 };
 use argent_runtime::{
     BuilderError, BuilderResult, IntoArtifactValue, covenant_engine_flags,
@@ -20,7 +19,7 @@ use kaspa_consensus_core::{
 };
 use kaspa_txscript::{
     pay_to_script_hash_script, pay_to_script_hash_signature_script_with_flags,
-    script_builder::ScriptBuilder,
+    script_builder::ScriptBuilder, serialize_i64,
 };
 use secp256k1::{Keypair, Message, Secp256k1};
 
@@ -37,8 +36,12 @@ const BORROW_HASH_CHAIN: u8 = 0x03;
 pub(super) fn artifact() -> &'static Artifact {
     static ARTIFACT: OnceLock<Artifact> = OnceLock::new();
     ARTIFACT.get_or_init(|| {
-        compile_inline("kcc20.ag", include_str!("../../../contracts/kcc20.ag"))
-            .expect("reference contract compiles")
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        build_file(
+            root.join("contracts/public_mint.ag"),
+            root.join("build/test-reference"),
+        )
+        .expect("public-mint app compiles")
     })
 }
 
@@ -54,6 +57,12 @@ fn chain_guard(next_guard: &[u8; 32], key: &Keypair) -> [u8; 32] {
     let mut preimage = next_guard.to_vec();
     preimage.extend(key.x_only_public_key().0.serialize());
     *blake3::hash(&preimage).as_bytes()
+}
+
+fn threshold_guard(threshold: i64) -> [u8; 32] {
+    let mut guard = [0x42; 32];
+    guard[..8].copy_from_slice(&serialize_i64(threshold, Some(8)).unwrap());
+    guard
 }
 
 fn schnorr_signature(
@@ -280,7 +289,12 @@ impl Transfer {
             .script_parts(&contract.compiled.bytecode)
             .expect("compiled contract has a state span");
         let redeem_script = |state: &TokenState| -> BuilderResult<Vec<u8>> {
-            let state = encode_runtime_state_script(abi, &contract.runtime_state, state)?;
+            let mut runtime_state = state.clone();
+            runtime_state.insert(
+                "gen__kcc20_template".into(),
+                contract.compiled.template_hash.to_vec().into(),
+            );
+            let state = encode_runtime_state_script(abi, &contract.runtime_state, &runtime_state)?;
             Ok([prefix, state.as_slice(), suffix].concat())
         };
         let mut inputs = Vec::new();
@@ -486,19 +500,58 @@ fn transfer_preserves_any_shared_extension_commitment() {
 }
 
 #[test]
+fn transfer_validates_output_schemes_across_full_byte_domain() {
+    for (field, minimum, maximum) in [
+        ("owner_scheme", OWNER_P2PK_SCHNORR, OWNER_COVENANT_ID),
+        ("borrow_scheme", BORROW_DISABLED, BORROW_HASH_CHAIN),
+    ] {
+        for scheme in u8::MIN..=u8::MAX {
+            let mut transfer = Transfer::normal();
+            transfer.outputs[0].insert(field.into(), scheme.into());
+            let result = transfer.build();
+
+            if (minimum..=maximum).contains(&scheme) {
+                assert!(
+                    result.is_ok(),
+                    "valid {field} {scheme:#04x} was rejected: {result:?}",
+                );
+            } else {
+                assert!(
+                    matches!(
+                        &result,
+                        Err(BuilderError::InputScript { input_index: 0, .. })
+                    ),
+                    "invalid {field} {scheme:#04x} must fail in the VM at input 0: {result:?}",
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn transfer_rejects_invalid_output_policies() {
     for field in ["owner_scheme", "borrow_scheme"] {
         let mut transfer = Transfer::normal();
         transfer.outputs[0].insert(field.into(), 0xffu8.into());
         transfer.rejects_at(0);
     }
-    let mut transfer = Transfer::normal();
-    let mut guard = [0u8; 32];
-    guard[0] = 1;
-    guard[7] = 0x80; // Eight-byte signed-magnitude encoding of -1.
-    transfer.outputs[0].insert("borrow_scheme".into(), BORROW_AMOUNT_THRESHOLD.into());
-    transfer.outputs[0].insert("borrow_guard".into(), guard.to_vec().into());
-    transfer.rejects_at(0);
+}
+
+#[test]
+fn normal_transfers_accept_negative_threshold_guards() {
+    for threshold in [-i64::MAX, -10, -1] {
+        let mut transfer = Transfer::normal();
+        transfer.outputs[0].insert("borrow_scheme".into(), BORROW_AMOUNT_THRESHOLD.into());
+        transfer.outputs[0].insert(
+            "borrow_guard".into(),
+            threshold_guard(threshold).to_vec().into(),
+        );
+        transfer.build().unwrap();
+
+        // The owner can also spend the state without invoking its borrow policy.
+        transfer.inputs[0].state = transfer.outputs[0].clone();
+        transfer.build().unwrap();
+    }
 }
 
 #[test]
@@ -527,6 +580,25 @@ fn threshold_borrow_requires_a_strict_increase() {
     let mut transfer = Transfer::borrowed(1);
     transfer.borrow_policy(BORROW_AMOUNT_THRESHOLD, [0; 32]);
     transfer.build().unwrap();
+}
+
+#[test]
+fn threshold_borrow_clamps_nonpositive_thresholds_to_zero() {
+    for threshold in [-i64::MAX, -10, -1, 0] {
+        let mut guard = threshold_guard(threshold);
+        if threshold == 0 {
+            guard[7] = 0x80; // Fixed-width signed-magnitude negative zero.
+        }
+        for increase in [-1, 0, 1] {
+            let mut transfer = Transfer::borrowed(increase);
+            transfer.borrow_policy(BORROW_AMOUNT_THRESHOLD, guard);
+            if increase > 0 {
+                transfer.build().unwrap();
+            } else {
+                transfer.rejects_at(0);
+            }
+        }
+    }
 }
 
 #[test]
@@ -947,7 +1019,7 @@ fn covenant_id_authority_may_be_a_distinct_family() {
 }
 
 #[test]
-fn reference_preserves_kcc20_state_layout_and_dispatch_tags() {
+fn public_mint_preserves_kcc20_state_layout_and_transfer_abi() {
     let contract = &artifact().sil_abi.contracts["KCC20"];
     let fields: Vec<_> = contract
         .runtime_state
@@ -958,6 +1030,7 @@ fn reference_preserves_kcc20_state_layout_and_dispatch_tags() {
     assert_eq!(
         fields,
         [
+            "gen__kcc20_template",
             "amount",
             "owner",
             "owner_scheme",
@@ -966,14 +1039,47 @@ fn reference_preserves_kcc20_state_layout_and_dispatch_tags() {
             "extension_commitment"
         ]
     );
-    assert_eq!(
-        contract.entries["transfer"].dispatch_tag.to_hex(),
-        "79c71c23"
-    );
-    assert_eq!(
-        contract.entries["transfer_delegator"].dispatch_tag.to_hex(),
-        "fd3ef14a"
-    );
+    for (entry, params) in [
+        ("transfer", vec!["next_states", "witness"]),
+        ("transfer_delegator", vec!["witness"]),
+    ] {
+        let entry = &contract.entries[entry];
+        assert_eq!(
+            entry
+                .params
+                .iter()
+                .map(|param| param.name.as_str())
+                .collect::<Vec<_>>(),
+            params,
+        );
+    }
+}
+
+#[test]
+fn kcc20_dispatch_tags_match_spec_vectors() {
+    // KCC-20's authoritative dispatch vectors.
+    // KCC-1 section 6.1 uses BLAKE3(signature)[0:4], with records expanded by field type.
+    let contract = &artifact().sil_abi.contracts["KCC20"];
+    for (entry, signature, expected_tag) in [
+        (
+            "transfer",
+            "transfer({int,byte[32],byte,byte,byte[32],byte[32]}[],byte[])",
+            [0x79, 0xc7, 0x1c, 0x23],
+        ),
+        (
+            "transfer_delegator",
+            "transfer_delegator(byte[])",
+            [0xfd, 0x3e, 0xf1, 0x4a],
+        ),
+    ] {
+        let digest = blake3::hash(signature.as_bytes());
+        assert_eq!(&digest.as_bytes()[..4], &expected_tag, "{entry} vector");
+        assert_eq!(
+            contract.entries[entry].dispatch_tag.as_bytes(),
+            &expected_tag,
+            "{entry} compiled dispatch tag",
+        );
+    }
 }
 
 #[test]

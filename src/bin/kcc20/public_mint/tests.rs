@@ -1,20 +1,12 @@
-use std::sync::OnceLock;
-
 use argent_runtime::{BuilderError, BuilderResult, execute_transaction_with_covenants};
 use kaspa_consensus_core::tx::Transaction;
 
 use super::*;
 
+mod lifecycle;
+
 fn artifact() -> &'static Artifact {
-    static ARTIFACT: OnceLock<Artifact> = OnceLock::new();
-    ARTIFACT.get_or_init(|| {
-        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-        build_file(
-            root.join("contracts/public_mint.ag"),
-            root.join("build/test-public-mint"),
-        )
-        .expect("mintable app compiles")
-    })
+    super::super::tests::artifact()
 }
 
 fn recipient_state(amount: i64) -> TokenState {
@@ -37,7 +29,7 @@ fn mint_case_with_extension(
 ) -> BuilderResult<(Transaction, Vec<UtxoEntry>)> {
     let builder = TxBuilder::new(artifact())?;
     let covenant_id = Hash::from_bytes([0x11; 32]);
-    let before = minter_state(remaining, lot, extension_commitment);
+    let before = minter_state(remaining, lot, &demo_keys(0xaa).1, extension_commitment);
     let ArtifactValue::Int(amount) = recipient["amount"] else {
         panic!("recipient amount must be an integer");
     };
@@ -63,7 +55,12 @@ fn mint_case_with_extension(
             .input(demo_outpoint(2, 0), funding(), Vec::new(), 0)
             .actor_output(
                 "PublicMint",
-                minter_state(remaining - amount, lot, extension_commitment),
+                minter_state(
+                    remaining - amount,
+                    lot,
+                    &demo_keys(0xaa).1,
+                    extension_commitment,
+                ),
                 CovenantBinding::new(0, covenant_id),
                 TOKEN_OUTPUT_SOMPI,
             )
@@ -208,7 +205,7 @@ fn mint_binds_allowance_policy_and_recipient_state() {
     for (index, actor, field, value) in cases {
         let (mut tx, utxos) = mint_case(25, 10, recipient_state(10)).unwrap();
         let mut state = if index == 0 {
-            minter_state(15, 10, &[0u8; 32])
+            minter_state(15, 10, &owner, &[0u8; 32])
         } else {
             token_state(&owner, 10)
         };

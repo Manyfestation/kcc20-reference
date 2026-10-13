@@ -90,11 +90,16 @@ seed stores a Schnorr deposit owner and a fixed extension commitment. It provide
 - **Seed splitting.** Anyone can call `split(new_owner)` to create another seed
   with the same extension commitment. The original keeps its state and deposit;
   the caller chooses the new seed's deposit owner and funds its deposit.
+- **Deposit rebalancing.** `rebalance_value(owner_signature)` lets the deposit
+  owner increase or decrease the seed's KAS value while preserving its owner
+  and extension commitment. It always recreates one seed and imposes no
+  contract-level value restriction.
 - **Deposit reclaim with a surviving seed.** `reclaim()` consumes a retiring
   seed with the same extension commitment and preserves the surviving seed's
   state and deposit. The retiring seed uses `reclaim_delegator(owner_signature)`;
   the survivor needs no signature. Every seed transition leaves at least one
-  seed alive, so a lone seed cannot reclaim its deposit.
+  seed alive. A lone seed can withdraw its deposit through `rebalance_value()`
+  while preserving itself.
 
 ### Deployment and genesis
 

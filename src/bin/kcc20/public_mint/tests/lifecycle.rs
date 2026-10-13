@@ -255,6 +255,79 @@ fn minter_reclaim_requires_exhaustion_and_its_owner() {
 }
 
 #[test]
+fn seeder_rebalance_value_preserves_state_and_requires_its_owner() {
+    let builder = TxBuilder::new(artifact()).unwrap();
+    let (alice, alice_public_key) = demo_keys(0xaa);
+    let (bob, bob_public_key) = demo_keys(0xbb);
+    let (_, seeder) = launch(&builder);
+    let binding = CovenantBinding::new(0, seeder.covenant_id);
+    let state = seeder_state(&alice_public_key, &[0; 32]);
+    let rebalance = |next_state, value, signer| {
+        builder.build(
+            &TxContext::new()
+                .actor_input(
+                    "TokenSeed",
+                    state.clone(),
+                    owner_call("rebalance_value", signer),
+                    seeder.outpoint,
+                    seeder.utxo.clone(),
+                    0,
+                )
+                .input(demo_outpoint(2, 0), funding(), Vec::new(), 0)
+                .actor_output("TokenSeed", next_state, binding, value)
+                .output(
+                    pay_to_pub_key_script(&alice_public_key),
+                    None,
+                    TOKEN_OUTPUT_SOMPI * 3 - value,
+                ),
+        )
+    };
+
+    for value in [
+        0,
+        1,
+        TOKEN_OUTPUT_SOMPI / 2,
+        TOKEN_OUTPUT_SOMPI,
+        TOKEN_OUTPUT_SOMPI * 2,
+    ] {
+        let tx = rebalance(state.clone(), value, alice).unwrap();
+        assert_eq!(tx.outputs[0].value, value);
+        assert_eq!(tx.outputs[1].value, TOKEN_OUTPUT_SOMPI * 3 - value);
+        assert!(tx.outputs[1].covenant.is_none());
+        assert_eq!(
+            CovenantOutput::from_tx(&tx, 0).unwrap().covenant_id,
+            seeder.covenant_id
+        );
+    }
+    rejects(rebalance(state.clone(), TOKEN_OUTPUT_SOMPI / 2, bob));
+
+    for changed in [
+        seeder_state(&bob_public_key, &[0; 32]),
+        seeder_state(&alice_public_key, &[1; 32]),
+    ] {
+        rejects(rebalance(changed, TOKEN_OUTPUT_SOMPI / 2, alice));
+    }
+
+    let without_successor = builder.build(
+        &TxContext::new()
+            .actor_input(
+                "TokenSeed",
+                state,
+                owner_call("rebalance_value", alice),
+                seeder.outpoint,
+                seeder.utxo,
+                0,
+            )
+            .output(
+                pay_to_pub_key_script(&alice_public_key),
+                None,
+                TOKEN_OUTPUT_SOMPI,
+            ),
+    );
+    assert!(without_successor.is_err());
+}
+
+#[test]
 fn seeder_split_create_borrow_and_reclaim_keep_a_live_seed() {
     let builder = TxBuilder::new(artifact()).unwrap();
     let (alice, alice_public_key) = demo_keys(0xaa);

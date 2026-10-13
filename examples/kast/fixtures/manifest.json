@@ -228,168 +228,11 @@
       "name": "PublicMint",
       "sil": "sil/PublicMint.sil",
       "state": "DepositState"
-    },
-    {
-      "entries": [
-        {
-          "consumes": [],
-          "emits": {
-            "kind": "outputs",
-            "outputs": [
-              {
-                "actors": [
-                  "TokenSeed"
-                ],
-                "auth_index": 0,
-                "name": "seeder"
-              },
-              {
-                "actors": [
-                  "KAST"
-                ],
-                "auth_index": 1,
-                "name": "recipient"
-              }
-            ]
-          },
-          "kind": "leader",
-          "name": "create",
-          "routes": [
-            {
-              "output": "seeder",
-              "successor": {
-                "kind": "exact_self"
-              }
-            },
-            {
-              "output": "recipient",
-              "successor": {
-                "actor": "KAST",
-                "kind": "constructed",
-                "state": "recipient_state"
-              }
-            }
-          ]
-        },
-        {
-          "consumes": [],
-          "emits": {
-            "kind": "outputs",
-            "outputs": [
-              {
-                "actors": [
-                  "TokenSeed"
-                ],
-                "auth_index": 0,
-                "name": "seeder"
-              },
-              {
-                "actors": [
-                  "TokenSeed"
-                ],
-                "auth_index": 1,
-                "name": "additional"
-              }
-            ]
-          },
-          "kind": "leader",
-          "name": "split",
-          "routes": [
-            {
-              "output": "seeder",
-              "successor": {
-                "kind": "exact_self"
-              }
-            },
-            {
-              "output": "additional",
-              "successor": {
-                "actor": "TokenSeed",
-                "kind": "constructed",
-                "state": "DepositState { owner: new_owner }"
-              }
-            }
-          ]
-        },
-        {
-          "consumes": [],
-          "emits": {
-            "kind": "outputs",
-            "outputs": [
-              {
-                "actors": [
-                  "TokenSeed"
-                ],
-                "auth_index": 0,
-                "name": "seeder"
-              }
-            ]
-          },
-          "kind": "leader",
-          "name": "rebalance_value",
-          "routes": [
-            {
-              "output": "seeder",
-              "successor": {
-                "kind": "exact_self"
-              }
-            }
-          ]
-        },
-        {
-          "consumes": [
-            {
-              "actor": "TokenSeed",
-              "name": "retiring"
-            }
-          ],
-          "emits": {
-            "kind": "outputs",
-            "outputs": [
-              {
-                "actors": [
-                  "TokenSeed"
-                ],
-                "auth_index": 0,
-                "name": "seeder"
-              }
-            ]
-          },
-          "kind": "leader",
-          "name": "reclaim",
-          "routes": [
-            {
-              "output": "seeder",
-              "successor": {
-                "kind": "exact_self"
-              }
-            }
-          ]
-        },
-        {
-          "consumes": [
-            {
-              "actor": "TokenSeed",
-              "name": "leader"
-            }
-          ],
-          "emits": {
-            "kind": "none"
-          },
-          "kind": "delegate",
-          "name": "reclaim_delegator",
-          "routes": []
-        }
-      ],
-      "name": "TokenSeed",
-      "sil": "sil/TokenSeed.sil",
-      "state": "DepositState"
     }
   ],
   "app": "KASToken",
   "modules": [
     "contracts/app.ag",
-    "contracts/token_seed.ag",
     "contracts/minter.ag",
     "contracts/token.ag",
     "../../contracts/kcc20.ag"
@@ -405,11 +248,6 @@
       "actor": "PublicMint",
       "hash": null,
       "symbol": "gen__public_mint_template"
-    },
-    {
-      "actor": "TokenSeed",
-      "hash": null,
-      "symbol": "gen__token_seed_template"
     }
   ]
 }

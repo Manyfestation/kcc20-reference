@@ -29,7 +29,7 @@ contract KAST(
 
     // :: current template lengths
     byte[4] constant gen__const_kast_prefix_len = byte[4](0x01000000);
-    byte[4] constant gen__const_kast_suffix_len = byte[4](0x3d0f0000);
+    byte[4] constant gen__const_kast_suffix_len = byte[4](0x640f0000);
 
     // :: state layouts
     struct KCC20State {
@@ -153,6 +153,7 @@ contract KAST(
         require(next_states.length == gen__next_outputs_output_count);
         require(witness.length > 0);
         for (i, 0, next_states.length, MAX_TOKEN_OUTPUTS) {
+            require(next_states[i].amount > 0);
             require(tx.outputs[OpAuthOutputIdx(this.activeInputIndex, gen__checked_range_index(i, gen__next_outputs_output_count))].value == next_states[i].amount);
             require_valid_owner_scheme(next_states[i].owner_scheme);
             require_valid_borrow_scheme(next_states[i].borrow_scheme);

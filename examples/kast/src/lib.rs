@@ -12,8 +12,6 @@ pub const SOMPI_PER_KAS: i64 = 100_000_000;
 pub const DECIMALS: u8 = 8;
 // Operational value chosen for the demo minter; never added to token amounts.
 pub const MINTER_VALUE: u64 = 1_000_000;
-// Operational value chosen for the demo seed; never attached to receiving tokens.
-pub const SEED_VALUE: u64 = 1_000_000;
 pub const GENESIS_GROUP: &str = "launch::kast";
 
 pub fn compile(output: impl AsRef<Path>) -> Result<CompiledAppBundle> {
@@ -59,10 +57,6 @@ pub fn token_state(owner: &[u8; 32], amount: i64) -> ActorState {
 }
 
 pub fn minter_state(owner: &[u8; 32]) -> ActorState {
-    state! { owner: owner.to_vec() }
-}
-
-pub fn seeder_state(owner: &[u8; 32]) -> ActorState {
     state! { owner: owner.to_vec() }
 }
 

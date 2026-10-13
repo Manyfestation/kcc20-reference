@@ -7,10 +7,7 @@ use kaspa_consensus_core::{
     Hash,
     tx::{CovenantBinding, ScriptPublicKey, Transaction, TransactionOutput, UtxoEntry},
 };
-use kast::{
-    ActorState, GENESIS_GROUP, MINTER_VALUE, SOMPI_PER_KAS, backed_value, minter_state,
-    seeder_state, token_state,
-};
+use kast::{ActorState, MINTER_VALUE, SOMPI_PER_KAS, backed_value, minter_state, token_state};
 use kcc20_reference::demo_support::{demo_keys, demo_outpoint, sign_input};
 use std::sync::OnceLock;
 
@@ -122,6 +119,7 @@ fn split_transfer_requires_backing_on_each_output() {
     let amounts = [40, 60];
     let values = [backed_value(40).unwrap(), backed_value(60).unwrap()];
     transfer(&amounts, &values).unwrap();
+    assert!(transfer(&[0, 100], &[0, 100]).is_err());
     assert!(transfer(&amounts, &[values[0] - 1, values[1] + 1]).is_err());
     assert!(transfer(&amounts, &[values[0] + 1, values[1] - 1]).is_err());
     transfer(
@@ -252,9 +250,9 @@ fn burn_requires_owner_authorization_without_a_successor() {
     assert!(build(true, true).is_err());
 }
 #[test]
-fn mint_adds_no_contract_storage_floor_or_token_deposit() {
-    // These check the covenant VM only; consensus decides output validity.
-    for amount in [0, 1, 2] {
+fn mint_requires_positive_backing_without_an_extra_token_deposit() {
+    assert!(mint(0, 0).is_err());
+    for amount in [1, 2] {
         mint(amount as u64, amount).unwrap();
     }
 }
@@ -324,7 +322,7 @@ fn rebalance_value_preserves_owner_and_requires_authorization(actor: &'static st
                 ),
         )
     };
-    for value in [0, 1, MINTER_VALUE / 2, MINTER_VALUE, MINTER_VALUE * 2] {
+    for value in [1, MINTER_VALUE / 2, MINTER_VALUE, MINTER_VALUE * 2 - 1] {
         let tx = rebalance(state.clone(), value, alice).unwrap();
         assert_eq!(tx.outputs[0].value, value);
         assert_eq!(tx.outputs[1].value, MINTER_VALUE * 2 - value);
@@ -357,10 +355,6 @@ fn rebalance_value_preserves_owner_and_requires_authorization(actor: &'static st
 #[test]
 fn minter_rebalance_value_preserves_owner_and_requires_authorization() {
     rebalance_value_preserves_owner_and_requires_authorization("PublicMint");
-}
-#[test]
-fn seeder_rebalance_value_preserves_owner_and_requires_authorization() {
-    rebalance_value_preserves_owner_and_requires_authorization("TokenSeed");
 }
 #[test]
 fn retiring_minter_requires_its_owner_and_preserves_a_surviving_lane() {
@@ -413,181 +407,6 @@ fn retiring_minter_requires_its_owner_and_preserves_a_surviving_lane() {
     );
 }
 #[test]
-fn seeder_creates_only_zero_tokens_with_exact_backing_and_valid_policies() {
-    let builder = TxBuilder::new(artifact()).unwrap();
-    let owner = demo_keys(0xaa).1;
-    let before = seeder_state(&owner);
-    let create = |recipient: ActorState, seed_value, recipient_value| {
-        builder.build(
-            &TxContext::new()
-                .actor_input(
-                    "TokenSeed",
-                    before.clone(),
-                    EntryCall::new("create").args(args!(recipient.clone())),
-                    demo_outpoint(1, 0),
-                    actor_utxo(&builder, "TokenSeed", before.clone(), MINTER_VALUE),
-                    0,
-                )
-                .input(demo_outpoint(2, 0), ordinary(10), Vec::new(), 0)
-                .actor_output("TokenSeed", before.clone(), binding(), seed_value)
-                .actor_output("KAST", recipient, binding(), recipient_value),
-        )
-    };
-    let empty = token_state(&owner, 0);
-    let tx = create(empty.clone(), MINTER_VALUE, 0).unwrap();
-    assert_eq!(tx.outputs[1].value, 0);
-    assert!(create(token_state(&owner, 1), MINTER_VALUE, 1).is_err());
-    assert!(create(token_state(&owner, -1), MINTER_VALUE, 0).is_err());
-    assert!(create(empty.clone(), MINTER_VALUE, 1).is_err());
-    assert!(create(empty.clone(), MINTER_VALUE - 1, 0).is_err());
-    for (field, value) in [
-        ("extension_commitment", ArtifactValue::Bytes(vec![0x42; 32])),
-        ("owner_scheme", 0xffu8.into()),
-        ("borrow_scheme", 0xffu8.into()),
-    ] {
-        let mut changed = empty.clone();
-        changed.insert(field.into(), value);
-        assert!(create(changed, MINTER_VALUE, 0).is_err());
-    }
-}
-#[test]
-fn seeder_genesis_split_create_and_reclaim_preserve_a_live_seed() {
-    let builder = TxBuilder::new(artifact()).unwrap();
-    let (alice, alice_owner) = demo_keys(0xaa);
-    let (bob, bob_owner) = demo_keys(0xbb);
-    let genesis = builder
-        .build(
-            &TxContext::new()
-                .input(
-                    demo_outpoint(1, 0),
-                    ordinary(2 * MINTER_VALUE),
-                    Vec::new(),
-                    0,
-                )
-                .actor_genesis_output(
-                    0,
-                    GENESIS_GROUP,
-                    "PublicMint",
-                    minter_state(&alice_owner),
-                    MINTER_VALUE,
-                )
-                .actor_genesis_output(
-                    0,
-                    GENESIS_GROUP,
-                    "TokenSeed",
-                    seeder_state(&alice_owner),
-                    MINTER_VALUE,
-                ),
-        )
-        .unwrap();
-    let minter = CovenantOutput::from_tx(&genesis, 0).unwrap();
-    let seeder = CovenantOutput::from_tx(&genesis, 1).unwrap();
-    assert_eq!(minter.covenant_id, seeder.covenant_id);
-    assert_eq!(genesis.outputs.len(), 2);
-    let binding = CovenantBinding::new(0, seeder.covenant_id);
-    let added_value = 321;
-    let split = builder
-        .build(
-            &TxContext::new()
-                .actor_input(
-                    "TokenSeed",
-                    seeder_state(&alice_owner),
-                    EntryCall::new("split").args(args!(bob_owner.to_vec())),
-                    seeder.outpoint,
-                    seeder.utxo,
-                    0,
-                )
-                .input(demo_outpoint(2, 0), ordinary(added_value), Vec::new(), 0)
-                .actor_output(
-                    "TokenSeed",
-                    seeder_state(&alice_owner),
-                    binding,
-                    MINTER_VALUE,
-                )
-                .actor_output("TokenSeed", seeder_state(&bob_owner), binding, added_value),
-        )
-        .unwrap();
-    let survivor = CovenantOutput::from_tx(&split, 0).unwrap();
-    let added = CovenantOutput::from_tx(&split, 1).unwrap();
-    let mut receiver = token_state(&bob_owner, 0);
-    receiver.insert("borrow_scheme".into(), 1u8.into());
-    let created = builder
-        .build(
-            &TxContext::new()
-                .actor_input(
-                    "TokenSeed",
-                    seeder_state(&bob_owner),
-                    EntryCall::new("create").args(args!(receiver.clone())),
-                    added.outpoint,
-                    added.utxo,
-                    0,
-                )
-                .actor_output("TokenSeed", seeder_state(&bob_owner), binding, added_value)
-                .actor_output("KAST", receiver, binding, 0),
-        )
-        .unwrap();
-    let retiring = CovenantOutput::from_tx(&created, 0).unwrap();
-    let reclaim = |signer, survivor_value| {
-        builder.build(
-            &TxContext::new()
-                .actor_input(
-                    "TokenSeed",
-                    seeder_state(&alice_owner),
-                    EntryCall::new("reclaim"),
-                    survivor.outpoint,
-                    survivor.utxo.clone(),
-                    0,
-                )
-                .actor_input(
-                    "TokenSeed",
-                    seeder_state(&bob_owner),
-                    EntryCall::new("reclaim_delegator")
-                        .args_with(move |tx, index| args!(sign_input(tx, index, &signer))),
-                    retiring.outpoint,
-                    retiring.utxo.clone(),
-                    0,
-                )
-                .actor_output(
-                    "TokenSeed",
-                    seeder_state(&alice_owner),
-                    binding,
-                    survivor_value,
-                )
-                .output(
-                    ScriptPublicKey::from_vec(0, vec![0x51]),
-                    None,
-                    MINTER_VALUE + added_value - survivor_value,
-                ),
-        )
-    };
-    let reclaimed = reclaim(bob, MINTER_VALUE).unwrap();
-    assert_eq!(reclaimed.outputs[1].value, added_value);
-    assert!(reclaimed.outputs[1].covenant.is_none());
-    assert!(reclaim(alice, MINTER_VALUE).is_err());
-    assert!(reclaim(bob, MINTER_VALUE - 1).is_err());
-    assert!(
-        builder
-            .build(
-                &TxContext::new()
-                    .actor_input(
-                        "TokenSeed",
-                        seeder_state(&alice_owner),
-                        EntryCall::new("reclaim"),
-                        survivor.outpoint,
-                        survivor.utxo,
-                        0,
-                    )
-                    .actor_output(
-                        "TokenSeed",
-                        seeder_state(&alice_owner),
-                        binding,
-                        MINTER_VALUE
-                    ),
-            )
-            .is_err()
-    );
-}
-#[test]
 fn reference_abi_remains_standard_and_added_burning_is_separate() {
     let token = &artifact().sil_abi.contracts["KAST"];
     assert!(token.entries.contains_key("transfer"));
@@ -602,9 +421,8 @@ fn reference_abi_remains_standard_and_added_burning_is_separate() {
         &[0xfd, 0x3e, 0xf1, 0x4a]
     );
     assert_eq!(token_state(&demo_keys(0xaa).1, 1).len(), 6);
-    assert_eq!(artifact().sil_abi.contracts.len(), 3);
+    assert_eq!(artifact().sil_abi.contracts.len(), 2);
     assert_eq!(minter_state(&demo_keys(0xaa).1).len(), 1);
-    assert_eq!(seeder_state(&demo_keys(0xaa).1).len(), 1);
 }
 #[test]
 fn minter_cannot_change_extension_identity() {

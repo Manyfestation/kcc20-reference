@@ -31,16 +31,10 @@ operational KAS, preserving the entire minter state and recreating one minter
 with unrestricted value. `reclaim()`
 retires one minter with its owner's signature while preserving another.
 
-[`token_seed.ag`](contracts/token_seed.ag) creates zero-token receiving UTXOs
-with zero sompi, preserving exact backing. Callers choose the recipient's owner
-and borrow policy. The seed's state holds only its deposit owner; KAST's extension
-commitment is fixed to zero. Seeds can split permissionlessly, rebalance their
-operational KAS with an owner signature, and reclaim a retiring seed through its
-owner-authorized delegate while preserving another seed.
-
-[`app.ag`](contracts/app.ag) links `PublicMint`, `TokenSeed`, and `KAST`.
-Genesis creates one minter, one seed, and no pre-minted tokens. There is no extra
-token deposit; output validity follows consensus rules.
+[`app.ag`](contracts/app.ag) links `PublicMint` and `KAST`.
+Genesis creates one minter and no pre-minted tokens. Minting and transfers
+require positive token amounts with exact backing: consensus rejects zero-sompi
+outputs. A receiving UTXO must be funded through minting or a transfer.
 
 ## Run locally
 
@@ -51,15 +45,15 @@ cargo run --locked -- build
 cargo run --locked -- demo
 ```
 
-The demo creates the token genesis, rebalances its seed, and creates Bob's empty
-receiving UTXO. It splits and rebalances its minter, mints one KAST to Alice,
-transfers it into Bob's receiving UTXO through borrowed receive, and burns it for
-one KAS. It uses deterministic test keys and submits no transactions to a node.
+The demo creates the token genesis and mints one KAST to Bob. It splits and
+rebalances its minter, mints one KAST to Alice, and transfers Alice's KAST into
+Bob's funded UTXO through borrowed receive. Bob burns the two KAST for two KAS.
+It uses deterministic test keys and submits no transactions to a node.
 
 `build/kast-demo/` contains the genesis transaction (`genesis.json`), initial
 state (`bootstrap.json`), Argent genesis proof (`argent-genesis.json`), compiled
-contracts, and the seed_rebalance_value, seed_create, split, rebalance_value,
-mint, transfer, and burn transactions.
+contracts, and the mint_receiver, split, rebalance_value, mint, transfer, and burn
+transactions.
 
 ## Debug the demo
 
@@ -87,4 +81,4 @@ cargo clippy --locked --all-targets -- -D warnings
 Fixture regeneration updates only KAST artifacts.
 [`fixtures`](fixtures/) contains the token descriptor, compiled
 artifact, manifest, and SIL. Tests cover backing, owner and borrow authorization,
-minter and seed lifecycles, deposit rebalancing, and burning.
+minter lifecycle, deposit rebalancing, burning, and positive demo output values.

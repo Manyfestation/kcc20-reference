@@ -1,7 +1,6 @@
-import "./token_seed.ag";
+import "./minter.ag";
 
 app KASToken {
     actor KAST;
     actor PublicMint;
-    actor TokenSeed;
 }

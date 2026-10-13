@@ -2,8 +2,8 @@ use argent::genesis::{ArgentCovenantBootstrap, ArgentGenesisPackage, GenesisProo
 use argent_runtime::{CovenantOutput, EntryCall, TxBuilder, TxContext, args};
 use kaspa_consensus_core::tx::{CovenantBinding, ScriptPublicKey, UtxoEntry};
 use kast::{
-    GENESIS_GROUP, MINTER_VALUE, Result, SEED_VALUE, SOMPI_PER_KAS, backed_value, compile,
-    minter_state, seeder_state, token_state,
+    GENESIS_GROUP, MINTER_VALUE, Result, SOMPI_PER_KAS, backed_value, compile, minter_state,
+    token_state,
 };
 use kcc20_reference::demo_support::{demo_keys, demo_outpoint, sign_input};
 use std::{fs, path::PathBuf};
@@ -50,7 +50,7 @@ fn demo() -> Result<()> {
     let context = TxContext::new()
         .input(
             demo_outpoint(1, 0),
-            ordinary(4 * MINTER_VALUE + SEED_VALUE),
+            ordinary(4 * MINTER_VALUE),
             Vec::new(),
             0,
         )
@@ -61,18 +61,10 @@ fn demo() -> Result<()> {
             minter_state(&owner),
             MINTER_VALUE,
         )
-        .actor_genesis_output(
-            0,
-            GENESIS_GROUP,
-            "TokenSeed",
-            seeder_state(&owner),
-            SEED_VALUE,
-        )
         .output(script.clone(), None, 3 * MINTER_VALUE - MINTER_VALUE / 10);
     let bootstrap = ArgentCovenantBootstrap::from_context(&bundle, &context, 0, GENESIS_GROUP)?;
     let genesis = builder.build(&context)?;
     let minter = CovenantOutput::from_tx(&genesis, 0)?;
-    let seeder = CovenantOutput::from_tx(&genesis, 1)?;
     let id = minter.covenant_id;
     let argent = GenesisProofPackage::new(ArgentGenesisPackage::new(
         &bundle,
@@ -89,38 +81,35 @@ fn demo() -> Result<()> {
     )?;
     fs::write(output.join("argent-genesis.json"), argent.to_json()?)?;
     let binding = CovenantBinding::new(0, id);
-    let seed_value = SEED_VALUE / 2;
-    let seed_rebalanced = builder.build(
-        &TxContext::new()
-            .actor_input(
-                "TokenSeed",
-                seeder_state(&owner),
-                EntryCall::new("rebalance_value")
-                    .args_with(move |tx, index| args!(sign_input(tx, index, &alice))),
-                seeder.outpoint,
-                seeder.utxo,
-                0,
-            )
-            .actor_output("TokenSeed", seeder_state(&owner), binding, seed_value)
-            .output(script.clone(), None, SEED_VALUE - seed_value),
-    )?;
-    let seeder = CovenantOutput::from_tx(&seed_rebalanced, 0)?;
-    let mut receiving_state = token_state(&bob, 0);
+    let amount = SOMPI_PER_KAS;
+    let mut receiving_state = token_state(&bob, amount);
     receiving_state.insert("borrow_scheme".into(), 1u8.into());
-    let seeded = builder.build(
+    let mint_receiver = builder.build(
         &TxContext::new()
             .actor_input(
-                "TokenSeed",
-                seeder_state(&owner),
-                EntryCall::new("create").args(args!(receiving_state.clone())),
-                seeder.outpoint,
-                seeder.utxo,
+                "PublicMint",
+                minter_state(&owner),
+                EntryCall::new("mint").args(args!(receiving_state.clone())),
+                minter.outpoint,
+                minter.utxo,
                 0,
             )
-            .actor_output("TokenSeed", seeder_state(&owner), binding, seed_value)
-            .actor_output("KAST", receiving_state.clone(), binding, 0),
+            .input(
+                demo_outpoint(2, 0),
+                ordinary(backed_value(amount)?),
+                Vec::new(),
+                0,
+            )
+            .actor_output("PublicMint", minter_state(&owner), binding, MINTER_VALUE)
+            .actor_output(
+                "KAST",
+                receiving_state.clone(),
+                binding,
+                backed_value(amount)?,
+            ),
     )?;
-    let receiver = CovenantOutput::from_tx(&seeded, 1)?;
+    let minter = CovenantOutput::from_tx(&mint_receiver, 0)?;
+    let receiver = CovenantOutput::from_tx(&mint_receiver, 1)?;
     // Anyone can split a minter into two independently spendable minters.
     let split = builder.build(
         &TxContext::new()
@@ -132,7 +121,7 @@ fn demo() -> Result<()> {
                 minter.utxo,
                 0,
             )
-            .input(demo_outpoint(2, 0), ordinary(MINTER_VALUE), Vec::new(), 0)
+            .input(demo_outpoint(3, 0), ordinary(MINTER_VALUE), Vec::new(), 0)
             .actor_output("PublicMint", minter_state(&owner), binding, MINTER_VALUE)
             .actor_output("PublicMint", minter_state(&bob), binding, MINTER_VALUE),
     )?;
@@ -153,7 +142,6 @@ fn demo() -> Result<()> {
             .output(script.clone(), None, MINTER_VALUE - minter_value),
     )?;
     let minter = CovenantOutput::from_tx(&rebalanced, 0)?;
-    let amount = SOMPI_PER_KAS;
     let minted_state = token_state(&owner, amount);
     let mint = builder.build(
         &TxContext::new()
@@ -166,7 +154,7 @@ fn demo() -> Result<()> {
                 0,
             )
             .input(
-                demo_outpoint(3, 0),
+                demo_outpoint(4, 0),
                 ordinary(backed_value(amount)?),
                 Vec::new(),
                 0,
@@ -176,7 +164,8 @@ fn demo() -> Result<()> {
     )?;
     let token = CovenantOutput::from_tx(&mint, 1)?;
     let mut sent_state = receiving_state.clone();
-    sent_state.insert("amount".into(), amount.into());
+    let received_amount = 2 * amount;
+    sent_state.insert("amount".into(), received_amount.into());
     let transfer = builder.build(
         &TxContext::new()
             .actor_input(
@@ -196,7 +185,12 @@ fn demo() -> Result<()> {
                 token.utxo,
                 0,
             )
-            .actor_output("KAST", sent_state.clone(), binding, backed_value(amount)?),
+            .actor_output(
+                "KAST",
+                sent_state.clone(),
+                binding,
+                backed_value(received_amount)?,
+            ),
     )?;
     let token = CovenantOutput::from_tx(&transfer, 0)?;
     let burned = builder.build(
@@ -210,11 +204,10 @@ fn demo() -> Result<()> {
                 token.utxo,
                 0,
             )
-            .output(script, None, backed_value(amount)?),
+            .output(script, None, backed_value(received_amount)?),
     )?;
     for (name, tx) in [
-        ("seed_rebalance_value", seed_rebalanced),
-        ("seed_create", seeded),
+        ("mint_receiver", mint_receiver),
         ("split", split),
         ("rebalance_value", rebalanced),
         ("mint", mint),
@@ -229,7 +222,7 @@ fn demo() -> Result<()> {
     println!("KAS Token (KAST), 8 decimals; synthetic offline demo completed");
     println!("covenant ID: {id}");
     println!(
-        "rebalanced seed, created receiver, split and rebalanced minter, minted and transferred 1 KAST, burned for 1 KAS"
+        "minted 1 KAST to Bob, split and rebalanced minter, minted and transferred 1 KAST from Alice, burned 2 KAST for 2 KAS"
     );
     println!(
         "genesis proof: {}",
@@ -244,6 +237,23 @@ mod tests {
 
     #[test]
     fn run_demo() -> Result<()> {
-        demo()
+        demo()?;
+        let output = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("build/kast-demo");
+        for name in [
+            "genesis",
+            "mint_receiver",
+            "split",
+            "rebalance_value",
+            "mint",
+            "transfer",
+            "burn",
+        ] {
+            let tx: kaspa_consensus_core::tx::Transaction =
+                serde_json::from_slice(&fs::read(output.join(format!("{name}.json")))?)?;
+            for (index, recipient) in tx.outputs.iter().enumerate() {
+                assert!(recipient.value > 0, "{name} output {index} has zero value");
+            }
+        }
+        Ok(())
     }
 }

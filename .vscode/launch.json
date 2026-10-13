@@ -1,0 +1,54 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug KAST demo",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": [
+          "build",
+          "--locked",
+          "--manifest-path",
+          "${workspaceFolder}/examples/kast/Cargo.toml",
+          "--bin",
+          "kast"
+        ],
+        "cwd": "${workspaceFolder}"
+      },
+      "args": [
+        "demo"
+      ],
+      "cwd": "${workspaceFolder}/examples/kast",
+      "sourceLanguages": [
+        "rust"
+      ]
+    },
+    {
+      "name": "Debug KAST demo test",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": [
+          "test",
+          "--locked",
+          "--no-run",
+          "--manifest-path",
+          "${workspaceFolder}/examples/kast/Cargo.toml",
+          "--bin",
+          "kast"
+        ],
+        "cwd": "${workspaceFolder}"
+      },
+      "args": [
+        "tests::run_demo",
+        "--exact",
+        "--nocapture"
+      ],
+      "cwd": "${workspaceFolder}/examples/kast",
+      "sourceLanguages": [
+        "rust"
+      ]
+    }
+  ]
+}

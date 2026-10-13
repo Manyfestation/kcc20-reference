@@ -1,0 +1,7 @@
+import "./token_seed.ag";
+
+app KASToken {
+    actor KAST;
+    actor PublicMint;
+    actor TokenSeed;
+}

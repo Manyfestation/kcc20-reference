@@ -1,0 +1,56 @@
+// Permissionless creation of zero-token KAST receiving UTXOs.
+import "./minter.ag";
+
+actor TokenSeed owns DepositState {
+    entry create(KCC20State recipient_state) emits {
+        seeder: TokenSeed,
+        recipient: KAST,
+    } {
+        require(recipient_state.amount == 0);
+        require(recipient_state.extension_commitment == KAST_EXTENSION);
+        require_valid_owner_scheme(recipient_state.owner_scheme);
+        require_valid_borrow_scheme(recipient_state.borrow_scheme);
+        require(seeder.value == self.value);
+        require(recipient.value == recipient_state.amount);
+        become {
+            seeder <- self,
+            recipient <- KAST(recipient_state),
+        };
+    }
+
+    entry split(pubkey new_owner) emits {
+        seeder: TokenSeed,
+        additional: TokenSeed,
+    } {
+        require(seeder.value == self.value);
+        unrestricted(additional.value);
+        become {
+            seeder <- self,
+            additional <- TokenSeed(DepositState { owner: new_owner }),
+        };
+    }
+
+    entry rebalance_value(sig owner_signature) emits {
+        seeder: TokenSeed,
+    } {
+        require(checkSig(owner_signature, owner));
+        unrestricted(seeder.value);
+        become seeder <- self;
+    }
+
+    // Retiring a seed preserves another seed for creating receiving UTXOs.
+    entry reclaim() consumes {
+        retiring: TokenSeed,
+    } emits {
+        seeder: TokenSeed,
+    } {
+        require(seeder.value == self.value);
+        become seeder <- self;
+    }
+
+    delegate reclaim_delegator(sig owner_signature) consumes {
+        leader: TokenSeed,
+    } {
+        require(checkSig(owner_signature, owner));
+    }
+}

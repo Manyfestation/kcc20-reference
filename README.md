@@ -62,6 +62,10 @@ a Schnorr deposit owner, and a fixed extension commitment. It provides:
   Both retain the per-mint limit and extension commitment, preserving the total
   allowance. The original keeps its owner and KAS deposit; the caller chooses
   the second minter's deposit owner and funds its deposit.
+- **Deposit rebalancing.** `rebalance_value(owner_signature)` lets the deposit
+  owner increase or decrease the minter's KAS value while preserving its entire
+  state: remaining allowance, per-mint limit, owner, and extension commitment.
+  It always recreates one minter and imposes no contract-level value restriction.
 - **Exhausted deposit reclaim.** `reclaim(owner_signature)` releases the KAS
   deposit once the allowance reaches zero, without creating a minter successor.
 - **Allowance return.** `reclaim_into()` combines a retiring minter's allowance

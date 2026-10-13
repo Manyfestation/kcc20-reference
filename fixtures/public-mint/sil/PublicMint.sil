@@ -27,7 +27,7 @@ contract PublicMint(
 
     // :: current template lengths
     byte[4] constant gen__const_public_mint_prefix_len = byte[4](0x01000000);
-    byte[4] constant gen__const_public_mint_suffix_len = byte[4](0x4c070000);
+    byte[4] constant gen__const_public_mint_suffix_len = byte[4](0x83070000);
 
     // :: state layouts
     struct KCC20State {
@@ -234,6 +234,25 @@ contract PublicMint(
         };
         // :: become PublicMint
         validateOutputState(gen__additional_output_idx, gen__state_additional_state);
+    }
+
+    // :: leader entry (1:N)
+    entry rebalance_value(sig owner_signature) {
+        // :: cov inputs
+        byte[32] gen__cov_id = OpInputCovenantId(this.activeInputIndex);
+        require(OpCovInputCount(gen__cov_id) == 1);
+
+        // :: auth outputs
+        require(OpAuthOutputCount(this.activeInputIndex) == 1);
+        // :: output minter: PublicMint
+        int gen__minter_output_idx = OpAuthOutputIdx(this.activeInputIndex, 0);
+
+        require(checkSig(owner_signature, owner));
+        // :: become PublicMint
+        require(
+            tx.outputs[gen__minter_output_idx].scriptPubKey
+                == tx.inputs[this.activeInputIndex].scriptPubKey
+        );
     }
 
     // :: leader entry (1:N)

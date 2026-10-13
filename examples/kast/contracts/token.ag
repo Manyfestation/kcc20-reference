@@ -13,7 +13,7 @@ actor KAST owns KCC20State {
         require(next_states.length == next_outputs.length);
         require(witness.length > 0);
 
-        // Validate every output token amount remains backed by exactly one sompi
+        // Each output token base unit must be backed by one sompi.
         for (i, 0, next_states.length, MAX_TOKEN_OUTPUTS) {
             require(next_outputs[i].value == next_states[i].amount);
             require_valid_owner_scheme(next_states[i].owner_scheme);
@@ -41,8 +41,7 @@ actor KAST owns KCC20State {
                     amount_threshold = 0;
                 }
             } else if (borrow_scheme == BORROW_SCHNORR_SIGNATURE) {
-                // The byte[65] conversion below implicitly validates the
-                // witness length.
+                // Converting to byte[65] checks the signature length.
                 require(checkSig(
                     sig(byte[65](path_witness)),
                     pubkey(borrow_guard)

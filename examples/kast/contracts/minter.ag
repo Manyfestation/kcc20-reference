@@ -1,4 +1,4 @@
-// An uncapped public mint lane. Its owner controls only its operational KAS.
+// Uncapped public minter. Its owner controls only its KAS deposit.
 import "./token.ag";
 
 const byte[32] KAST_EXTENSION = byte[32](0x0000000000000000000000000000000000000000000000000000000000000000);
@@ -23,7 +23,7 @@ actor PublicMint owns DepositState {
         };
     }
 
-    // Anyone can create another independent lane, funding its deposit.
+    // Anyone can create another minter by funding its deposit.
     entry split(pubkey new_owner) emits {
         minter: PublicMint,
         additional: PublicMint,
@@ -36,7 +36,7 @@ actor PublicMint owns DepositState {
         };
     }
 
-    // The owner may rebalance operational KAS while preserving the mint lane.
+    // The owner can change the KAS deposit without changing the minter state.
     entry rebalance_value(sig owner_signature) emits {
         minter: PublicMint,
     } {
@@ -45,7 +45,7 @@ actor PublicMint owns DepositState {
         become minter <- self;
     }
 
-    // Retiring a lane preserves another lane so minting remains available.
+    // Retire one minter while preserving another.
     entry reclaim() consumes {
         retiring: PublicMint,
     } emits {

@@ -38,7 +38,7 @@ actor TokenSeed owns DepositState {
         become seeder <- self;
     }
 
-    // Retiring a seed preserves another seed for creating receiving UTXOs.
+    // Retire one seed while preserving another.
     entry reclaim() consumes {
         retiring: TokenSeed,
     } emits {

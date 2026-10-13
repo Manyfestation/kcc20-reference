@@ -121,7 +121,7 @@ fn demo() -> Result<()> {
             .actor_output("KAST", receiving_state.clone(), binding, 0),
     )?;
     let receiver = CovenantOutput::from_tx(&seeded, 1)?;
-    // Permissionless splitting enables two independently spendable mint lanes.
+    // Anyone can split a minter into two independently spendable minters.
     let split = builder.build(
         &TxContext::new()
             .actor_input(

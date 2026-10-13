@@ -119,7 +119,6 @@ fn split_transfer_requires_backing_on_each_output() {
     let amounts = [40, 60];
     let values = [backed_value(40).unwrap(), backed_value(60).unwrap()];
     transfer(&amounts, &values).unwrap();
-    assert!(transfer(&[0, 100], &[0, 100]).is_err());
     assert!(transfer(&amounts, &[values[0] - 1, values[1] + 1]).is_err());
     assert!(transfer(&amounts, &[values[0] + 1, values[1] - 1]).is_err());
     transfer(
@@ -250,8 +249,7 @@ fn burn_requires_owner_authorization_without_a_successor() {
     assert!(build(true, true).is_err());
 }
 #[test]
-fn mint_requires_positive_backing_without_an_extra_token_deposit() {
-    assert!(mint(0, 0).is_err());
+fn mint_adds_no_extra_token_deposit() {
     for amount in [1, 2] {
         mint(amount as u64, amount).unwrap();
     }

@@ -33,8 +33,8 @@ retires one minter with its owner's signature while preserving another.
 
 [`app.ag`](contracts/app.ag) links `PublicMint` and `KAST`.
 Genesis creates one minter and no pre-minted tokens. Minting and transfers
-require positive token amounts with exact backing: consensus rejects zero-sompi
-outputs. A receiving UTXO must be funded through minting or a transfer.
+enforce exact backing; consensus rejects zero-sompi outputs. A receiving UTXO
+must be funded through minting or a transfer.
 
 ## Run locally
 

@@ -25,7 +25,7 @@ contract PublicMint(
 
     // :: current template lengths
     byte[4] constant gen__const_public_mint_prefix_len = byte[4](0x01000000);
-    byte[4] constant gen__const_public_mint_suffix_len = byte[4](0x8a040000);
+    byte[4] constant gen__const_public_mint_suffix_len = byte[4](0x85040000);
 
     // :: state layouts
     struct KCC20State {
@@ -120,7 +120,6 @@ contract PublicMint(
         // :: output recipient: KAST
         int gen__recipient_output_idx = OpAuthOutputIdx(this.activeInputIndex, 1);
 
-        require(recipient_state.amount > 0);
         require(recipient_state.extension_commitment == KAST_EXTENSION);
         require_valid_owner_scheme(recipient_state.owner_scheme);
         require_valid_borrow_scheme(recipient_state.borrow_scheme);

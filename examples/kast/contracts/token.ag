@@ -15,7 +15,6 @@ actor KAST owns KCC20State {
 
         // Each output token base unit must be backed by one sompi.
         for (i, 0, next_states.length, MAX_TOKEN_OUTPUTS) {
-            require(next_states[i].amount > 0);
             require(next_outputs[i].value == next_states[i].amount);
             require_valid_owner_scheme(next_states[i].owner_scheme);
             require_valid_borrow_scheme(next_states[i].borrow_scheme);

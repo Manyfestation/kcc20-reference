@@ -12,7 +12,6 @@ actor PublicMint owns DepositState {
         minter: PublicMint,
         recipient: KAST,
     } {
-        require(recipient_state.amount > 0);
         require(recipient_state.extension_commitment == KAST_EXTENSION);
         require_valid_owner_scheme(recipient_state.owner_scheme);
         require_valid_borrow_scheme(recipient_state.borrow_scheme);

@@ -71,7 +71,7 @@ cargo test --locked --bin kast tests::run_demo -- --exact --nocapture
 ```
 
 In VS Code with CodeLLDB installed, click **Debug** above `run_demo` in
-`src/main.rs`, or select **Debug KAST demo test** in the Run and Debug panel.
+`src/main.rs`.
 Set breakpoints inside `demo()`, especially at `bootstrap.clone().compose(&bundle)`
 and `argent.verify_argent(id)`, to inspect proof construction and verification.
 The test writes the same files under `build/kast-demo/` as the CLI demo.

@@ -1,42 +1,49 @@
 # KAS Token (KAST)
 
-KAST is a KAS-backed KCC20 token written in Argent. It uses eight decimals:
-one base unit is backed by one sompi, so one KAST is backed by one KAS.
-The example is a separate Rust crate that runs locally with synthetic funding
-and reuses the reference's Rust demo helpers through a path dependency.
+KAST enables applications built for KCC-20 tokens to compose with KAS using
+the same code and state structure. Native KAS is held in the UTXO value;
+KAST wraps it in the token state, ownership rules, and transfer interface
+those applications already support.
 
-## Contracts
+For example, a DEX can pair KAS with other tokens using its existing KCC-20
+pool logic. Each KAST output holds its own backing KAS, one-to-one. Minting
+wraps KAS; burning releases it.
 
-[`token.ag`](contracts/token.ag) imports the reference's
-[KCC20 state and authorization](../../contracts/kcc20.ag). Minting and transfers
-enforce exact backing on every token output:
+This example implements KAST in Argent and runs locally with synthetic funding.
+Its Rust crate reuses the reference's demo helpers through a path dependency.
+
+## Contracts and composition
+
+[`token.ag`](contracts/token.ag) builds on the reference's
+[KCC-20 state and authorization](../../contracts/kcc20.ag), including
+covenant-ID ownership and borrowed receive. KAST uses the same eight decimal
+places as KAS, with one token base unit per sompi. Minting and transfers enforce
+exact backing on every token output:
 
 ```text
 value in sompi = amount in token base units
 ```
 
-Transfers use the KCC20 owner and borrow rules. Minting sets the extension
-commitment to zero; transfers preserve it. `burn` consumes the entire token UTXO
-with owner authorization and releases its backing KAS. The owner chooses the
-payout outputs and may use some KAS for fees. To burn part of a balance,
-split it first; to burn multiple inputs together, merge them first. Borrow
-permission does not authorize burning.
+Minting is permissionless and has no token supply cap: every new KAST must be
+funded with KAS, so supply is constrained by the KAS available to wrap.
+[`minter.ag`](contracts/minter.ag) supports public minting and permissionless
+creation of additional minters in the same token family. The minter's operational KAS is separate from
+token backing; its owner can rebalance it or retire a minter while preserving
+another. [`app.ag`](contracts/app.ag) creates one minter at genesis, with no
+pre-minted tokens.
 
-[`minter.ag`](contracts/minter.ag) defines an uncapped public minter
-with no supply counter or per-mint limit. Callers fund the token backing;
-minting preserves the minter's owner and operational KAS. Anyone can
-`split(new_owner)` to create another minter funded by the caller.
-`rebalance_value(owner_signature)` lets the owner increase or decrease its
-operational KAS, preserving the entire minter state and recreating one minter
-with unrestricted value. `reclaim()`
-retires one minter with its owner's signature while preserving another.
+`burn` consumes a whole token output with owner authorization and releases its
+backing KAS to the owner's chosen payout, allowing a portion to cover fees. Borrow
+authorization does not permit burning. Split first to burn part of an output,
+or merge first to burn several together.
 
-[`app.ag`](contracts/app.ag) links `PublicMint` and `KAST`.
-Genesis creates one minter and no pre-minted tokens. Minting and transfers
-enforce exact backing; consensus rejects zero-sompi outputs. A receiving UTXO
-must be funded through minting or a transfer.
+Recognizing one deployment per network as the shared KCC-20 representation of
+KAS would let applications converge on the same asset and liquidity. Anyone
+could mint into that shared token family; a separate deployment would have a
+different covenant ID and remain a distinct asset. This is a proposed ecosystem
+convention; this example does not designate a canonical deployment.
 
-## Run locally
+## Run and debug
 
 From `examples/kast/`:
 
@@ -45,30 +52,24 @@ cargo run --locked -- build
 cargo run --locked -- demo
 ```
 
-The demo creates the token genesis and mints one KAST to Bob. It splits and
-rebalances its minter, mints one KAST to Alice, and transfers Alice's KAST into
-Bob's funded UTXO through borrowed receive. Bob burns the two KAST for two KAS.
-It uses deterministic test keys and submits no transactions to a node.
+The offline demo deploys KAST, mints one KAST each to Bob and Alice, transfers
+Alice's KAST to Bob through borrowed receive, and burns Bob's two KAST. It also
+splits and rebalances the minter. It uses deterministic test keys and submits
+no transactions to a node.
 
-`build/kast-demo/` contains the genesis transaction (`genesis.json`), initial
-state (`bootstrap.json`), Argent genesis proof (`argent-genesis.json`), compiled
-contracts, and the mint_receiver, split, rebalance_value, mint, transfer, and burn
-transactions.
+`build/kast-demo/` contains the compiled contracts, genesis transaction, initial
+state, Argent genesis proof, and demo transactions.
 
-## Debug the demo
-
-The `run_demo` test calls the full offline demo directly, including genesis proof
-creation and verification, without requiring command-line arguments:
+To run the same demo as a test:
 
 ```sh
 cargo test --locked --bin kast tests::run_demo -- --exact --nocapture
 ```
 
-In VS Code with CodeLLDB installed, click **Debug** above `run_demo` in
-`src/main.rs`.
-Set breakpoints inside `demo()`, especially at `bootstrap.clone().compose(&bundle)`
-and `argent.verify_argent(id)`, to inspect proof construction and verification.
-The test writes the same files under `build/kast-demo/` as the CLI demo.
+In VS Code with CodeLLDB, click **Debug** above `run_demo` in
+[`src/main.rs`](src/main.rs). Breakpoints at
+`bootstrap.clone().compose(&bundle)` and `argent.verify_argent(id)` show proof
+construction and verification. The test writes the same demo artifacts.
 
 ## Fixtures and checks
 
@@ -78,7 +79,6 @@ cargo test --locked --all-targets
 cargo clippy --locked --all-targets -- -D warnings
 ```
 
-Fixture regeneration updates only KAST artifacts.
-[`fixtures`](fixtures/) contains the token descriptor, compiled
-artifact, manifest, and SIL. Tests cover backing, owner and borrow authorization,
+Regeneration updates only KAST artifacts in [`fixtures`](fixtures/): the token
+descriptor, compiled artifact, manifest, and SIL. Tests cover backing, owner and borrow authorization,
 minter lifecycle, deposit rebalancing, burning, and positive demo output values.

@@ -25,7 +25,7 @@ contract TokenSeed(
 
     // :: current template lengths
     byte[4] constant gen__const_token_seed_prefix_len = byte[4](0x01000000);
-    byte[4] constant gen__const_token_seed_suffix_len = byte[4](0xc6040000);
+    byte[4] constant gen__const_token_seed_suffix_len = byte[4](0xfb040000);
 
     // :: state layouts
     struct KCC20State {
@@ -194,6 +194,25 @@ contract TokenSeed(
         };
         // :: become TokenSeed
         validateOutputState(gen__additional_output_idx, gen__state_additional_state);
+    }
+
+    // :: leader entry (1:N)
+    entry rebalance_value(sig owner_signature) {
+        // :: cov inputs
+        byte[32] gen__cov_id = OpInputCovenantId(this.activeInputIndex);
+        require(OpCovInputCount(gen__cov_id) == 1);
+
+        // :: auth outputs
+        require(OpAuthOutputCount(this.activeInputIndex) == 1);
+        // :: output seeder: TokenSeed
+        int gen__seeder_output_idx = OpAuthOutputIdx(this.activeInputIndex, 0);
+
+        require(checkSig(owner_signature, owner));
+        // :: become TokenSeed
+        require(
+            tx.outputs[gen__seeder_output_idx].scriptPubKey
+                == tx.inputs[this.activeInputIndex].scriptPubKey
+        );
     }
 
     // :: leader entry (M:N)

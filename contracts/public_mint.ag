@@ -71,6 +71,15 @@ actor PublicMint owns PublicMintState {
         };
     }
 
+    // The owner may rebalance the KAS deposit without changing issuance state.
+    entry rebalance_value(sig owner_signature) emits {
+        minter: PublicMint,
+    } {
+        require(checkSig(owner_signature, owner));
+        unrestricted(minter.value);
+        become minter <- self;
+    }
+
     entry reclaim(sig owner_signature) emits none {
         require(remaining == 0);
         require(checkSig(owner_signature, owner));

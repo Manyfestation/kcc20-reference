@@ -139,6 +139,82 @@ fn minter_split_mint_and_reclaim_return_unused_allowance() {
 }
 
 #[test]
+fn minter_rebalance_value_preserves_state_and_requires_its_owner() {
+    let builder = TxBuilder::new(artifact()).unwrap();
+    let (alice, alice_public_key) = demo_keys(0xaa);
+    let (bob, bob_public_key) = demo_keys(0xbb);
+    let (minter, _) = launch(&builder);
+    let binding = CovenantBinding::new(0, minter.covenant_id);
+    let state = minter_state(25, 10, &alice_public_key, &[0; 32]);
+    let rebalance = |next_state, value, signer| {
+        builder.build(
+            &TxContext::new()
+                .actor_input(
+                    "PublicMint",
+                    state.clone(),
+                    owner_call("rebalance_value", signer),
+                    minter.outpoint,
+                    minter.utxo.clone(),
+                    0,
+                )
+                .input(demo_outpoint(2, 0), funding(), Vec::new(), 0)
+                .actor_output("PublicMint", next_state, binding, value)
+                .output(
+                    pay_to_pub_key_script(&alice_public_key),
+                    None,
+                    TOKEN_OUTPUT_SOMPI * 3 - value,
+                ),
+        )
+    };
+
+    // No value floor: withdrawing the entire deposit still leaves a live minter.
+    for value in [
+        0,
+        1,
+        TOKEN_OUTPUT_SOMPI / 2,
+        TOKEN_OUTPUT_SOMPI,
+        TOKEN_OUTPUT_SOMPI * 2,
+    ] {
+        let tx = rebalance(state.clone(), value, alice).unwrap();
+        assert_eq!(tx.outputs[0].value, value);
+        assert_eq!(tx.outputs[1].value, TOKEN_OUTPUT_SOMPI * 3 - value);
+        assert!(tx.outputs[1].covenant.is_none());
+        assert_eq!(
+            CovenantOutput::from_tx(&tx, 0).unwrap().covenant_id,
+            minter.covenant_id
+        );
+    }
+    rejects(rebalance(state.clone(), TOKEN_OUTPUT_SOMPI / 2, bob));
+
+    for changed in [
+        minter_state(24, 10, &alice_public_key, &[0; 32]),
+        minter_state(25, 11, &alice_public_key, &[0; 32]),
+        minter_state(25, 10, &bob_public_key, &[0; 32]),
+        minter_state(25, 10, &alice_public_key, &[1; 32]),
+    ] {
+        rejects(rebalance(changed, TOKEN_OUTPUT_SOMPI / 2, alice));
+    }
+
+    let without_successor = builder.build(
+        &TxContext::new()
+            .actor_input(
+                "PublicMint",
+                state,
+                owner_call("rebalance_value", alice),
+                minter.outpoint,
+                minter.utxo,
+                0,
+            )
+            .output(
+                pay_to_pub_key_script(&alice_public_key),
+                None,
+                TOKEN_OUTPUT_SOMPI,
+            ),
+    );
+    assert!(without_successor.is_err());
+}
+
+#[test]
 fn minter_reclaim_requires_exhaustion_and_its_owner() {
     let builder = TxBuilder::new(artifact()).unwrap();
     let (alice, alice_public_key) = demo_keys(0xaa);
@@ -176,6 +252,79 @@ fn minter_reclaim_requires_exhaustion_and_its_owner() {
     reclaim(0, alice).unwrap();
     rejects(reclaim(1, alice));
     rejects(reclaim(0, bob));
+}
+
+#[test]
+fn seeder_rebalance_value_preserves_state_and_requires_its_owner() {
+    let builder = TxBuilder::new(artifact()).unwrap();
+    let (alice, alice_public_key) = demo_keys(0xaa);
+    let (bob, bob_public_key) = demo_keys(0xbb);
+    let (_, seeder) = launch(&builder);
+    let binding = CovenantBinding::new(0, seeder.covenant_id);
+    let state = seeder_state(&alice_public_key, &[0; 32]);
+    let rebalance = |next_state, value, signer| {
+        builder.build(
+            &TxContext::new()
+                .actor_input(
+                    "TokenSeed",
+                    state.clone(),
+                    owner_call("rebalance_value", signer),
+                    seeder.outpoint,
+                    seeder.utxo.clone(),
+                    0,
+                )
+                .input(demo_outpoint(2, 0), funding(), Vec::new(), 0)
+                .actor_output("TokenSeed", next_state, binding, value)
+                .output(
+                    pay_to_pub_key_script(&alice_public_key),
+                    None,
+                    TOKEN_OUTPUT_SOMPI * 3 - value,
+                ),
+        )
+    };
+
+    for value in [
+        0,
+        1,
+        TOKEN_OUTPUT_SOMPI / 2,
+        TOKEN_OUTPUT_SOMPI,
+        TOKEN_OUTPUT_SOMPI * 2,
+    ] {
+        let tx = rebalance(state.clone(), value, alice).unwrap();
+        assert_eq!(tx.outputs[0].value, value);
+        assert_eq!(tx.outputs[1].value, TOKEN_OUTPUT_SOMPI * 3 - value);
+        assert!(tx.outputs[1].covenant.is_none());
+        assert_eq!(
+            CovenantOutput::from_tx(&tx, 0).unwrap().covenant_id,
+            seeder.covenant_id
+        );
+    }
+    rejects(rebalance(state.clone(), TOKEN_OUTPUT_SOMPI / 2, bob));
+
+    for changed in [
+        seeder_state(&bob_public_key, &[0; 32]),
+        seeder_state(&alice_public_key, &[1; 32]),
+    ] {
+        rejects(rebalance(changed, TOKEN_OUTPUT_SOMPI / 2, alice));
+    }
+
+    let without_successor = builder.build(
+        &TxContext::new()
+            .actor_input(
+                "TokenSeed",
+                state,
+                owner_call("rebalance_value", alice),
+                seeder.outpoint,
+                seeder.utxo,
+                0,
+            )
+            .output(
+                pay_to_pub_key_script(&alice_public_key),
+                None,
+                TOKEN_OUTPUT_SOMPI,
+            ),
+    );
+    assert!(without_successor.is_err());
 }
 
 #[test]

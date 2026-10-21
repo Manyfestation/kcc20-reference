@@ -42,6 +42,15 @@ actor TokenSeed owns TokenSeedState {
         };
     }
 
+    // The owner may rebalance the KAS deposit without changing seed state.
+    entry rebalance_value(sig owner_signature) emits {
+        seeder: TokenSeed,
+    } {
+        require(checkSig(owner_signature, owner));
+        unrestricted(seeder.value);
+        become seeder <- self;
+    }
+
     // Every spend leaves a seeder alive, including owner-authorized reclaim.
     entry reclaim() consumes {
         retiring: TokenSeed,

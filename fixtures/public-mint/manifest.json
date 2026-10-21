@@ -53,6 +53,13 @@
           "routes": [{ "output": "minter", "successor": { "kind": "constructed", "actor": "PublicMint", "state": "retained" } }, { "output": "additional", "successor": { "kind": "constructed", "actor": "PublicMint", "state": "added" } }]
         },
         {
+          "name": "rebalance_value",
+          "kind": "leader",
+          "emits": { "kind": "outputs", "outputs": [{ "name": "minter", "auth_index": 0, "actors": ["PublicMint"] }] },
+          "consumes": [],
+          "routes": [{ "output": "minter", "successor": { "kind": "exact_self" } }]
+        },
+        {
           "name": "reclaim",
           "kind": "leader",
           "emits": { "kind": "none" },
@@ -93,6 +100,13 @@
           "emits": { "kind": "outputs", "outputs": [{ "name": "seeder", "auth_index": 0, "actors": ["TokenSeed"] }, { "name": "additional", "auth_index": 1, "actors": ["TokenSeed"] }] },
           "consumes": [],
           "routes": [{ "output": "seeder", "successor": { "kind": "exact_self" } }, { "output": "additional", "successor": { "kind": "constructed", "actor": "TokenSeed", "state": "added" } }]
+        },
+        {
+          "name": "rebalance_value",
+          "kind": "leader",
+          "emits": { "kind": "outputs", "outputs": [{ "name": "seeder", "auth_index": 0, "actors": ["TokenSeed"] }] },
+          "consumes": [],
+          "routes": [{ "output": "seeder", "successor": { "kind": "exact_self" } }]
         },
         {
           "name": "reclaim",

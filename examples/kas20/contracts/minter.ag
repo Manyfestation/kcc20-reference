@@ -1,7 +1,7 @@
 // Uncapped public minter. Its owner controls only its KAS deposit.
 import "./token.ag";
 
-const byte[32] KAST_EXTENSION = byte[32](0x0000000000000000000000000000000000000000000000000000000000000000);
+const byte[32] KAS20_EXTENSION = byte[32](0x0000000000000000000000000000000000000000000000000000000000000000);
 
 state DepositState {
     pubkey owner;
@@ -10,16 +10,16 @@ state DepositState {
 actor PublicMint owns DepositState {
     entry mint(KCC20State recipient_state) emits {
         minter: PublicMint,
-        recipient: KAST,
+        recipient: KAS20,
     } {
-        require(recipient_state.extension_commitment == KAST_EXTENSION);
+        require(recipient_state.extension_commitment == KAS20_EXTENSION);
         require_valid_owner_scheme(recipient_state.owner_scheme);
         require_valid_borrow_scheme(recipient_state.borrow_scheme);
         require(minter.value == self.value);
         require(recipient.value == recipient_state.amount);
         become {
             minter <- self,
-            recipient <- KAST(recipient_state),
+            recipient <- KAS20(recipient_state),
         };
     }
 

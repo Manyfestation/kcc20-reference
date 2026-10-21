@@ -3,11 +3,11 @@ use argent_runtime::{
     ArtifactValue, CovenantOutput, EntryCall, TxBuilder, TxContext, args,
     execute_transaction_with_covenants,
 };
+use kas20::{ActorState, MINTER_VALUE, SOMPI_PER_KAS, backed_value, minter_state, token_state};
 use kaspa_consensus_core::{
     Hash,
     tx::{CovenantBinding, ScriptPublicKey, Transaction, TransactionOutput, UtxoEntry},
 };
-use kast::{ActorState, MINTER_VALUE, SOMPI_PER_KAS, backed_value, minter_state, token_state};
 use kcc20_reference::demo_support::{demo_keys, demo_outpoint, sign_input};
 use std::sync::OnceLock;
 
@@ -16,7 +16,7 @@ fn artifact() -> &'static Artifact {
     VALUE.get_or_init(|| {
         build_file(
             concat!(env!("CARGO_MANIFEST_DIR"), "/contracts/app.ag"),
-            concat!(env!("CARGO_MANIFEST_DIR"), "/build/test-kast"),
+            concat!(env!("CARGO_MANIFEST_DIR"), "/build/test-kas20"),
         )
         .unwrap()
     })
@@ -54,7 +54,7 @@ fn mint(value: u64, amount: i64) -> argent_runtime::BuilderResult<Transaction> {
             )
             .input(demo_outpoint(2, 0), ordinary(value), Vec::new(), 0)
             .actor_output("PublicMint", minter_state(&owner), binding(), MINTER_VALUE)
-            .actor_output("KAST", token_state(&owner, amount), binding(), value),
+            .actor_output("KAS20", token_state(&owner, amount), binding(), value),
     )
 }
 #[test]
@@ -92,7 +92,7 @@ fn transfer(outputs: &[i64], values: &[u64]) -> argent_runtime::BuilderResult<Tr
     let args_states = states.clone();
     let mut context = TxContext::new()
         .actor_input(
-            "KAST",
+            "KAS20",
             before.clone(),
             EntryCall::new("transfer").args_with(move |tx, index| {
                 let mut witness = vec![0];
@@ -100,7 +100,7 @@ fn transfer(outputs: &[i64], values: &[u64]) -> argent_runtime::BuilderResult<Tr
                 args!(args_states.clone(), witness)
             }),
             demo_outpoint(1, 0),
-            actor_utxo(&builder, "KAST", before, backed_value(amount).unwrap()),
+            actor_utxo(&builder, "KAS20", before, backed_value(amount).unwrap()),
             0,
         )
         .input(
@@ -110,7 +110,7 @@ fn transfer(outputs: &[i64], values: &[u64]) -> argent_runtime::BuilderResult<Tr
             0,
         );
     for (state, value) in states.into_iter().zip(values) {
-        context = context.actor_output("KAST", state, binding(), *value);
+        context = context.actor_output("KAS20", state, binding(), *value);
     }
     builder.build(&context)
 }
@@ -145,28 +145,38 @@ fn borrowed_receive_moves_both_tokens_and_backing() {
         builder.build(
             &TxContext::new()
                 .actor_input(
-                    "KAST",
+                    "KAS20",
                     before.clone(),
                     EntryCall::new("transfer").args(args!(
                         vec![after.clone(), token_state(&owner, 90)],
                         vec![1u8]
                     )),
                     demo_outpoint(1, 0),
-                    actor_utxo(&builder, "KAST", before.clone(), backed_value(100).unwrap()),
+                    actor_utxo(
+                        &builder,
+                        "KAS20",
+                        before.clone(),
+                        backed_value(100).unwrap(),
+                    ),
                     0,
                 )
                 .actor_input(
-                    "KAST",
+                    "KAS20",
                     sender.clone(),
                     EntryCall::new("transfer_delegator")
                         .args_with(move |tx, index| args!(sign_input(tx, index, &alice))),
                     demo_outpoint(2, 0),
-                    actor_utxo(&builder, "KAST", sender.clone(), backed_value(100).unwrap()),
+                    actor_utxo(
+                        &builder,
+                        "KAS20",
+                        sender.clone(),
+                        backed_value(100).unwrap(),
+                    ),
                     0,
                 )
-                .actor_output("KAST", after.clone(), binding(), borrowed_value)
+                .actor_output("KAS20", after.clone(), binding(), borrowed_value)
                 .actor_output(
-                    "KAST",
+                    "KAS20",
                     token_state(&owner, 90),
                     binding(),
                     backed_value(90).unwrap(),
@@ -189,12 +199,12 @@ fn burn(
     builder.build(
         &TxContext::new()
             .actor_input(
-                "KAST",
+                "KAS20",
                 state.clone(),
                 EntryCall::new("burn")
                     .args_with(move |tx, index| args!(sign_input(tx, index, &key))),
                 demo_outpoint(1, 0),
-                actor_utxo(&builder, "KAST", state, value),
+                actor_utxo(&builder, "KAS20", state, value),
                 0,
             )
             .output(payout_script, None, payout),
@@ -221,7 +231,7 @@ fn burn_requires_owner_authorization_without_a_successor() {
     let build = |authorized, continuation| {
         let mut context = TxContext::new()
             .actor_input(
-                "KAST",
+                "KAS20",
                 state.clone(),
                 EntryCall::new("burn").args_with(move |tx, index| {
                     let witness = if authorized {
@@ -232,12 +242,12 @@ fn burn_requires_owner_authorization_without_a_successor() {
                     args!(witness)
                 }),
                 demo_outpoint(1, 0),
-                actor_utxo(&builder, "KAST", state.clone(), value),
+                actor_utxo(&builder, "KAS20", state.clone(), value),
                 0,
             )
             .output(ScriptPublicKey::from_vec(0, vec![0x51]), None, value);
         if continuation {
-            context = context.actor_output("KAST", token_state(&owner, 0), binding(), 0);
+            context = context.actor_output("KAS20", token_state(&owner, 0), binding(), 0);
         }
         builder.build(&context)
     };
@@ -290,7 +300,7 @@ fn split_minter_clones_an_uncapped_lane_without_owner_authorization() {
                 )
                 .input(demo_outpoint(3, 0), ordinary(10), Vec::new(), 0)
                 .actor_output("PublicMint", minter_state(&bob), binding(), MINTER_VALUE)
-                .actor_output("KAST", token_state(&alice, 10), binding(), 10),
+                .actor_output("KAS20", token_state(&alice, 10), binding(), 10),
         )
         .unwrap();
 }
@@ -406,7 +416,7 @@ fn retiring_minter_requires_its_owner_and_preserves_a_surviving_lane() {
 }
 #[test]
 fn reference_abi_remains_standard_and_added_burning_is_separate() {
-    let token = &artifact().sil_abi.contracts["KAST"];
+    let token = &artifact().sil_abi.contracts["KAS20"];
     assert!(token.entries.contains_key("transfer"));
     assert!(token.entries.contains_key("transfer_delegator"));
     assert!(token.entries.contains_key("burn"));
@@ -451,7 +461,7 @@ fn minter_cannot_change_extension_identity() {
                         0
                     )
                     .actor_output("PublicMint", minter_state(&owner), binding(), MINTER_VALUE)
-                    .actor_output("KAST", changed, binding(), backed_value(1).unwrap())
+                    .actor_output("KAS20", changed, binding(), backed_value(1).unwrap())
             )
             .is_err()
     );

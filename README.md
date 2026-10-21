@@ -13,15 +13,15 @@ The repository implements the `KCC20` actor in Argent and includes a
 `KCC20PublicMint` app that adds permissionless issuance and zero-token receiving
 UTXOs, with offline examples and contract tests.
 
-## KAST example
+## KAS20 example
 
-The [KAS Token (KAST) example](examples/kast/README.md) is a self-contained crate
-under `examples/kast/`, with its own contracts, tests, and fixtures. It imports
-the reference token definitions and adds KAS backing, owner-authorized burning,
-and an offline genesis demo.
+The [KAS20 example](examples/kas20/README.md), a token with the symbol KAS, is a
+self-contained crate under `examples/kas20/`, with its own contracts, tests, and
+fixtures. It imports the reference token definitions and adds KAS backing,
+owner-authorized burning, and an offline genesis demo.
 
 ```sh
-cargo run --locked --manifest-path examples/kast/Cargo.toml -- demo
+cargo run --locked --manifest-path examples/kas20/Cargo.toml -- demo
 ```
 
 ## KCC20 actor

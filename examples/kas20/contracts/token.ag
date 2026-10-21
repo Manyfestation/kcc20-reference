@@ -1,14 +1,14 @@
-// KAST uses direct KCC20 transfer checks with exact sompi backing and burning.
+// KAS20 uses direct KCC20 transfer checks with exact sompi backing and burning.
 import "../../../contracts/kcc20.ag";
 
-actor KAST owns KCC20State {
+actor KAS20 owns KCC20State {
     entry transfer(
         KCC20State[] next_states,
         byte[] witness
     ) consumes {
-        delegates: KAST[0..=MAX_DELEGATES]
+        delegates: KAS20[0..=MAX_DELEGATES]
     } emits {
-        next_outputs: KAST[1..=MAX_TOKEN_OUTPUTS]
+        next_outputs: KAS20[1..=MAX_TOKEN_OUTPUTS]
     } {
         require(next_states.length == next_outputs.length);
         require(witness.length > 0);
@@ -83,11 +83,11 @@ actor KAST owns KCC20State {
         }
 
         // Bind the supplied states to the continuation outputs.
-        become next_outputs <- KAST[](next_states);
+        become next_outputs <- KAS20[](next_states);
     }
 
     delegate transfer_delegator(byte[] witness) consumes {
-        leader: KAST
+        leader: KAS20
     } {
         require_owner_authorized(owner, owner_scheme, witness);
     }

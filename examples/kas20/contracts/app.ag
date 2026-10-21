@@ -1,6 +1,6 @@
 import "./minter.ag";
 
-app KASToken {
-    actor KAST;
+app KAS20Token {
+    actor KAS20;
     actor PublicMint;
 }

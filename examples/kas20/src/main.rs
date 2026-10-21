@@ -1,10 +1,10 @@
 use argent::genesis::{ArgentCovenantBootstrap, ArgentGenesisPackage, GenesisProofPackage};
 use argent_runtime::{CovenantOutput, EntryCall, TxBuilder, TxContext, args};
-use kaspa_consensus_core::tx::{CovenantBinding, ScriptPublicKey, UtxoEntry};
-use kast::{
+use kas20::{
     GENESIS_GROUP, MINTER_VALUE, Result, SOMPI_PER_KAS, backed_value, compile, minter_state,
     token_state,
 };
+use kaspa_consensus_core::tx::{CovenantBinding, ScriptPublicKey, UtxoEntry};
 use kcc20_reference::demo_support::{demo_keys, demo_outpoint, sign_input};
 use std::{fs, path::PathBuf};
 
@@ -25,21 +25,21 @@ fn main() -> Result<()> {
             let output = root.join(if command == "fixtures" {
                 "fixtures"
             } else {
-                "build/kast"
+                "build/kas20"
             });
             compile(&output)?;
-            println!("compiled KAST contracts into {}", output.display());
+            println!("compiled KAS20 contracts into {}", output.display());
         }
         Some("demo") if args.next().is_none() => demo()?,
         _ => {
-            return Err("usage: kast build | fixtures | demo".into());
+            return Err("usage: kas20 build | fixtures | demo".into());
         }
     }
     Ok(())
 }
 
 fn demo() -> Result<()> {
-    let output = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("build/kast-demo");
+    let output = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("build/kas20-demo");
     fs::create_dir_all(&output)?;
     let compiled = compile(output.join("contracts"))?;
     let bundle = compiled.runtime_bundle()?;
@@ -102,7 +102,7 @@ fn demo() -> Result<()> {
             )
             .actor_output("PublicMint", minter_state(&owner), binding, MINTER_VALUE)
             .actor_output(
-                "KAST",
+                "KAS20",
                 receiving_state.clone(),
                 binding,
                 backed_value(amount)?,
@@ -160,7 +160,12 @@ fn demo() -> Result<()> {
                 0,
             )
             .actor_output("PublicMint", minter_state(&bob), binding, minter_value)
-            .actor_output("KAST", minted_state.clone(), binding, backed_value(amount)?),
+            .actor_output(
+                "KAS20",
+                minted_state.clone(),
+                binding,
+                backed_value(amount)?,
+            ),
     )?;
     let token = CovenantOutput::from_tx(&mint, 1)?;
     let mut sent_state = receiving_state.clone();
@@ -169,7 +174,7 @@ fn demo() -> Result<()> {
     let transfer = builder.build(
         &TxContext::new()
             .actor_input(
-                "KAST",
+                "KAS20",
                 receiving_state,
                 EntryCall::new("transfer").args(args!(vec![sent_state.clone()], vec![1u8])),
                 receiver.outpoint,
@@ -177,7 +182,7 @@ fn demo() -> Result<()> {
                 0,
             )
             .actor_input(
-                "KAST",
+                "KAS20",
                 minted_state,
                 EntryCall::new("transfer_delegator")
                     .args_with(move |tx, index| args!(sign_input(tx, index, &alice))),
@@ -186,7 +191,7 @@ fn demo() -> Result<()> {
                 0,
             )
             .actor_output(
-                "KAST",
+                "KAS20",
                 sent_state.clone(),
                 binding,
                 backed_value(received_amount)?,
@@ -196,7 +201,7 @@ fn demo() -> Result<()> {
     let burned = builder.build(
         &TxContext::new()
             .actor_input(
-                "KAST",
+                "KAS20",
                 sent_state,
                 EntryCall::new("burn")
                     .args_with(move |tx, index| args!(sign_input(tx, index, &bob_key))),
@@ -219,10 +224,10 @@ fn demo() -> Result<()> {
             serde_json::to_vec_pretty(&tx)?,
         )?;
     }
-    println!("KAS Token (KAST), 8 decimals; synthetic offline demo completed");
+    println!("KAS20 (symbol KAS), 8 decimals; synthetic offline demo completed");
     println!("covenant ID: {id}");
     println!(
-        "minted 1 KAST to Bob, split and rebalanced minter, minted and transferred 1 KAST from Alice, burned 2 KAST for 2 KAS"
+        "minted 1 KAS20 to Bob, split and rebalanced minter, minted and transferred 1 KAS20 from Alice, burned 2 KAS20 for 2 KAS"
     );
     println!(
         "genesis proof: {}",
@@ -238,7 +243,7 @@ mod tests {
     #[test]
     fn run_demo() -> Result<()> {
         demo()?;
-        let output = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("build/kast-demo");
+        let output = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("build/kas20-demo");
         for name in [
             "genesis",
             "mint_receiver",

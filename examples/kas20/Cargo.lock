@@ -1980,6 +1980,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "kas20"
+version = "0.1.0"
+dependencies = [
+ "argent",
+ "argent-runtime",
+ "kaspa-consensus-core",
+ "kcc20-reference",
+ "serde_json",
+]
+
+[[package]]
 name = "kaspa-addresses"
 version = "2.0.1"
 source = "git+https://github.com/kaspanet/rusty-kaspa?rev=a41a333b08848f41bf737b72592e463a6011b8ac#a41a333b08848f41bf737b72592e463a6011b8ac"
@@ -2213,17 +2224,6 @@ dependencies = [
  "thiserror 2.0.20",
  "uuid",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "kast"
-version = "0.1.0"
-dependencies = [
- "argent",
- "argent-runtime",
- "kaspa-consensus-core",
- "kcc20-reference",
- "serde_json",
 ]
 
 [[package]]

@@ -1,21 +1,21 @@
 {
-  "app": "KASToken",
+  "app": "KAS20Token",
   "argent": {
     "actor_enums": [],
     "actors": [
       {
         "abi": {
-          "contract": "KAST"
+          "contract": "KAS20"
         },
         "entries": [
           {
             "abi": {
-              "contract": "KAST",
+              "contract": "KAS20",
               "entry": "transfer"
             },
             "consumes": [
               {
-                "actor": "KAST",
+                "actor": "KAS20",
                 "cardinality": {
                   "kind": "range",
                   "maximum": 2,
@@ -29,7 +29,7 @@
               "outputs": [
                 {
                   "actors": [
-                    "KAST"
+                    "KAS20"
                   ],
                   "auth_index": null,
                   "cardinality": {
@@ -46,26 +46,26 @@
             "name": "transfer",
             "route_plan": {
               "active_input": {
-                "actor": "KAST",
+                "actor": "KAS20",
                 "cov_index": 0,
                 "name": "self"
               },
               "consumes": [
                 {
-                  "actor": "KAST",
+                  "actor": "KAS20",
                   "cov_index": null,
                   "name": "delegates"
                 }
               ],
               "leader_input": {
-                "actor": "KAST",
+                "actor": "KAS20",
                 "cov_index": 0,
                 "name": "self"
               },
               "outputs": [
                 {
                   "actors": [
-                    "KAST"
+                    "KAS20"
                   ],
                   "auth_index": null,
                   "name": "next_outputs"
@@ -77,10 +77,10 @@
               {
                 "output": "next_outputs",
                 "successor": {
-                  "actor": "KAST",
+                  "actor": "KAS20",
                   "kind": "constructed",
                   "state_expr": "next_states",
-                  "template_id": "template/kast"
+                  "template_id": "template/kas20"
                 }
               }
             ],
@@ -89,12 +89,12 @@
           },
           {
             "abi": {
-              "contract": "KAST",
+              "contract": "KAS20",
               "entry": "transfer_delegator"
             },
             "consumes": [
               {
-                "actor": "KAST",
+                "actor": "KAS20",
                 "name": "leader"
               }
             ],
@@ -106,19 +106,19 @@
             "name": "transfer_delegator",
             "route_plan": {
               "active_input": {
-                "actor": "KAST",
+                "actor": "KAS20",
                 "cov_index": null,
                 "name": "self"
               },
               "consumes": [
                 {
-                  "actor": "KAST",
+                  "actor": "KAS20",
                   "cov_index": 0,
                   "name": "leader"
                 }
               ],
               "leader_input": {
-                "actor": "KAST",
+                "actor": "KAS20",
                 "cov_index": 0,
                 "name": "leader"
               },
@@ -131,7 +131,7 @@
           },
           {
             "abi": {
-              "contract": "KAST",
+              "contract": "KAS20",
               "entry": "burn"
             },
             "consumes": [],
@@ -143,13 +143,13 @@
             "name": "burn",
             "route_plan": {
               "active_input": {
-                "actor": "KAST",
+                "actor": "KAS20",
                 "cov_index": 0,
                 "name": "self"
               },
               "consumes": [],
               "leader_input": {
-                "actor": "KAST",
+                "actor": "KAS20",
                 "cov_index": 0,
                 "name": "self"
               },
@@ -163,11 +163,11 @@
         ],
         "leader_for": [
           {
-            "actor": "KAST",
+            "actor": "KAS20",
             "entry": "transfer_delegator"
           }
         ],
-        "name": "KAST",
+        "name": "KAS20",
         "state": "KCC20State"
       },
       {
@@ -193,7 +193,7 @@
                 },
                 {
                   "actors": [
-                    "KAST"
+                    "KAS20"
                   ],
                   "auth_index": 1,
                   "name": "recipient"
@@ -202,13 +202,13 @@
             },
             "hidden_params": [
               {
-                "name": "gen__kast_prefix",
+                "name": "gen__kas20_prefix",
                 "purpose": {
                   "kind": "template_prefix_bytes"
                 },
-                "recipe_id": "witness/kast/template_prefix_bytes",
+                "recipe_id": "witness/kas20/template_prefix_bytes",
                 "subject": {
-                  "actor": "KAST",
+                  "actor": "KAS20",
                   "kind": "actor"
                 },
                 "type": {
@@ -216,13 +216,13 @@
                 }
               },
               {
-                "name": "gen__kast_suffix",
+                "name": "gen__kas20_suffix",
                 "purpose": {
                   "kind": "template_suffix_bytes"
                 },
-                "recipe_id": "witness/kast/template_suffix_bytes",
+                "recipe_id": "witness/kas20/template_suffix_bytes",
                 "subject": {
-                  "actor": "KAST",
+                  "actor": "KAS20",
                   "kind": "actor"
                 },
                 "type": {
@@ -254,15 +254,15 @@
                 },
                 {
                   "actors": [
-                    "KAST"
+                    "KAS20"
                   ],
                   "auth_index": 1,
                   "name": "recipient"
                 }
               ],
               "witness_recipe_ids": [
-                "witness/kast/template_prefix_bytes",
-                "witness/kast/template_suffix_bytes"
+                "witness/kas20/template_prefix_bytes",
+                "witness/kas20/template_suffix_bytes"
               ]
             },
             "routes": [
@@ -275,34 +275,34 @@
               {
                 "output": "recipient",
                 "successor": {
-                  "actor": "KAST",
+                  "actor": "KAS20",
                   "kind": "constructed",
                   "state_expr": "recipient_state",
-                  "template_id": "template/kast"
+                  "template_id": "template/kas20"
                 }
               }
             ],
             "template_selectors": [],
             "witnesses": [
               {
-                "param": "gen__kast_prefix",
+                "param": "gen__kas20_prefix",
                 "purpose": {
                   "kind": "template_prefix_bytes"
                 },
-                "recipe_id": "witness/kast/template_prefix_bytes",
+                "recipe_id": "witness/kas20/template_prefix_bytes",
                 "subject": {
-                  "actor": "KAST",
+                  "actor": "KAS20",
                   "kind": "actor"
                 }
               },
               {
-                "param": "gen__kast_suffix",
+                "param": "gen__kas20_suffix",
                 "purpose": {
                   "kind": "template_suffix_bytes"
                 },
-                "recipe_id": "witness/kast/template_suffix_bytes",
+                "recipe_id": "witness/kas20/template_suffix_bytes",
                 "subject": {
-                  "actor": "KAST",
+                  "actor": "KAS20",
                   "kind": "actor"
                 }
               }
@@ -563,16 +563,16 @@
     "interfaces": {
       "exports": [
         {
-          "actor": "KAST",
-          "app": "KASToken",
-          "fingerprint_hex": "ba7a5a75b6ae375d2b98ba1d339456ccf41caeddfa89aeb65b1003e92b3a4314",
-          "id": "interface/actor/KAST",
+          "actor": "KAS20",
+          "app": "KAS20Token",
+          "fingerprint_hex": "1ec6ca869752f3529e7c2a26651678310753fd9fa2bc7d5a39eac0f92453dd0b",
+          "id": "interface/actor/KAS20",
           "state": "KCC20State"
         },
         {
           "actor": "PublicMint",
-          "app": "KASToken",
-          "fingerprint_hex": "2737eb13d32776a4560059ed6bdb424196cdd94d1c1686aa99c6a461b83057f8",
+          "app": "KAS20Token",
+          "fingerprint_hex": "11da2900ee6ae115844b274dcf2217babbe50e8f444c08301e776e61d4cfbc6b",
           "id": "interface/actor/PublicMint",
           "state": "DepositState"
         }
@@ -642,12 +642,12 @@
       "route_tables": [],
       "runtime_states": [
         {
-          "contract": "KAST",
+          "contract": "KAS20",
           "field_roles": [
             {
-              "name": "gen__kast_template",
+              "name": "gen__kas20_template",
               "role": {
-                "contract": "KAST",
+                "contract": "KAS20",
                 "kind": "template"
               }
             }
@@ -658,9 +658,9 @@
           "contract": "PublicMint",
           "field_roles": [
             {
-              "name": "gen__kast_template",
+              "name": "gen__kas20_template",
               "role": {
-                "contract": "KAST",
+                "contract": "KAS20",
                 "kind": "template"
               }
             },
@@ -677,10 +677,10 @@
       ],
       "templates": [
         {
-          "actor": "KAST",
+          "actor": "KAS20",
           "actor_type_handle": {
             "context_fields": [
-              "gen__kast_template"
+              "gen__kas20_template"
             ],
             "state": "KCC20State",
             "template": {
@@ -4659,8 +4659,8 @@
               ]
             }
           },
-          "contract": "KAST",
-          "id": "template/kast",
+          "contract": "KAS20",
+          "id": "template/kas20",
           "sil_template_hash": [
             152,
             131,
@@ -4695,13 +4695,13 @@
             119,
             51
           ],
-          "symbol": "gen__kast_template"
+          "symbol": "gen__kas20_template"
         },
         {
           "actor": "PublicMint",
           "actor_type_handle": {
             "context_fields": [
-              "gen__kast_template",
+              "gen__kas20_template",
               "gen__public_mint_template"
             ],
             "state": "DepositState",
@@ -6011,36 +6011,36 @@
       ],
       "witness_recipes": [
         {
-          "id": "witness/kast/template_prefix_bytes",
-          "param": "gen__kast_prefix",
+          "id": "witness/kas20/template_prefix_bytes",
+          "param": "gen__kas20_prefix",
           "purpose": {
             "kind": "template_prefix_bytes"
           },
           "subject": {
-            "actor": "KAST",
+            "actor": "KAS20",
             "kind": "actor"
           },
-          "template_id": "template/kast"
+          "template_id": "template/kas20"
         },
         {
-          "id": "witness/kast/template_suffix_bytes",
-          "param": "gen__kast_suffix",
+          "id": "witness/kas20/template_suffix_bytes",
+          "param": "gen__kas20_suffix",
           "purpose": {
             "kind": "template_suffix_bytes"
           },
           "subject": {
-            "actor": "KAST",
+            "actor": "KAS20",
             "kind": "actor"
           },
-          "template_id": "template/kast"
+          "template_id": "template/kas20"
         }
       ]
     },
     "templates": [
       {
-        "actor": "KAST",
-        "id": "template/kast",
-        "symbol": "gen__kast_template"
+        "actor": "KAS20",
+        "id": "template/kas20",
+        "symbol": "gen__kas20_template"
       },
       {
         "actor": "PublicMint",
@@ -6054,7 +6054,7 @@
     "name": "argentc",
     "version": "0.1.0"
   },
-  "id": "c884390cbbedf2f1135429d70ad104a036d135316d151022ab73b6c0da1ea515",
+  "id": "4e778bb0ab23031ea29e6ed265e9a58d876d88b0b3b9aaab139ed997683c6fab",
   "modules": [
     "contracts/app.ag",
     "contracts/minter.ag",
@@ -6066,7 +6066,7 @@
   "sil_abi": {
     "compiler_version": "0.1.0",
     "contracts": {
-      "KAST": {
+      "KAS20": {
         "compiled": {
           "bytecode": [
             107,
@@ -10204,7 +10204,7 @@
         "runtime_state": {
           "fields": [
             {
-              "name": "gen__kast_template",
+              "name": "gen__kas20_template",
               "type": {
                 "kind": "fixed_bytes",
                 "len": 32
@@ -10252,7 +10252,7 @@
           ],
           "source": "State"
         },
-        "source_path": "sil/KAST.sil"
+        "source_path": "sil/KAS20.sil"
       },
       "PublicMint": {
         "compiled": {
@@ -11566,13 +11566,13 @@
                 }
               },
               {
-                "name": "gen__kast_prefix",
+                "name": "gen__kas20_prefix",
                 "type": {
                   "kind": "bytes"
                 }
               },
               {
-                "name": "gen__kast_suffix",
+                "name": "gen__kas20_suffix",
                 "type": {
                   "kind": "bytes"
                 }
@@ -11620,7 +11620,7 @@
         "runtime_state": {
           "fields": [
             {
-              "name": "gen__kast_template",
+              "name": "gen__kas20_template",
               "type": {
                 "kind": "fixed_bytes",
                 "len": 32
@@ -11657,10 +11657,10 @@
           }
         ]
       },
-      "Gen__KASTState": {
+      "Gen__KAS20State": {
         "fields": [
           {
-            "name": "gen__kast_template",
+            "name": "gen__kas20_template",
             "type": {
               "kind": "fixed_bytes",
               "len": 32

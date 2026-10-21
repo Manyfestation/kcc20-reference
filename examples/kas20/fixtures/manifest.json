@@ -5,7 +5,7 @@
         {
           "consumes": [
             {
-              "actor": "KAST",
+              "actor": "KAS20",
               "cardinality": {
                 "kind": "range",
                 "maximum": 2,
@@ -19,7 +19,7 @@
             "outputs": [
               {
                 "actors": [
-                  "KAST"
+                  "KAS20"
                 ],
                 "auth_index": null,
                 "cardinality": {
@@ -37,7 +37,7 @@
             {
               "output": "next_outputs",
               "successor": {
-                "actor": "KAST",
+                "actor": "KAS20",
                 "arity": "many",
                 "kind": "constructed",
                 "state": "next_states"
@@ -48,7 +48,7 @@
         {
           "consumes": [
             {
-              "actor": "KAST",
+              "actor": "KAS20",
               "name": "leader"
             }
           ],
@@ -69,8 +69,8 @@
           "routes": []
         }
       ],
-      "name": "KAST",
-      "sil": "sil/KAST.sil",
+      "name": "KAS20",
+      "sil": "sil/KAS20.sil",
       "state": "KCC20State"
     },
     {
@@ -89,7 +89,7 @@
               },
               {
                 "actors": [
-                  "KAST"
+                  "KAS20"
                 ],
                 "auth_index": 1,
                 "name": "recipient"
@@ -108,7 +108,7 @@
             {
               "output": "recipient",
               "successor": {
-                "actor": "KAST",
+                "actor": "KAS20",
                 "kind": "constructed",
                 "state": "recipient_state"
               }
@@ -230,7 +230,7 @@
       "state": "DepositState"
     }
   ],
-  "app": "KASToken",
+  "app": "KAS20Token",
   "modules": [
     "contracts/app.ag",
     "contracts/minter.ag",
@@ -240,9 +240,9 @@
   "root": "contracts/app.ag",
   "templates": [
     {
-      "actor": "KAST",
+      "actor": "KAS20",
       "hash": null,
-      "symbol": "gen__kast_template"
+      "symbol": "gen__kas20_template"
     },
     {
       "actor": "PublicMint",

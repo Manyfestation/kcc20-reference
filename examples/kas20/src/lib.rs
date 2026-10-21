@@ -12,7 +12,7 @@ pub const SOMPI_PER_KAS: i64 = 100_000_000;
 pub const DECIMALS: u8 = 8;
 // Operational value chosen for the demo minter; never added to token amounts.
 pub const MINTER_VALUE: u64 = 1_000_000;
-pub const GENESIS_GROUP: &str = "launch::kast";
+pub const GENESIS_GROUP: &str = "launch::kas20";
 
 pub fn compile(output: impl AsRef<Path>) -> Result<CompiledAppBundle> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).canonicalize()?;

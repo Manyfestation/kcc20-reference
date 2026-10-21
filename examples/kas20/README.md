@@ -1,22 +1,22 @@
-# KAS Token (KAST)
+# KAS20
 
-KAST enables applications built for KCC-20 tokens to compose with KAS using
-the same code and state structure. Native KAS is held in the UTXO value;
-KAST wraps it in the token state, ownership rules, and transfer interface
-those applications already support.
+KAS20, symbol KAS, enables applications built for KCC-20 tokens to compose with
+KAS using the same code and state structure. Native KAS is held in the UTXO
+value; KAS20 wraps it in the token state, ownership rules, and transfer
+interface those applications already support.
 
 For example, a DEX can pair KAS with other tokens using its existing KCC-20
-pool logic. Each KAST output holds its own backing KAS, one-to-one. Minting
+pool logic. Each KAS20 output holds its own backing KAS, one-to-one. Minting
 wraps KAS; burning releases it.
 
-This example implements KAST in Argent and runs locally with synthetic funding.
+This example implements KAS20 in Argent and runs locally with synthetic funding.
 Its Rust crate reuses the reference's demo helpers through a path dependency.
 
 ## Contracts and composition
 
 [`token.ag`](contracts/token.ag) builds on the reference's
 [KCC-20 state and authorization](../../contracts/kcc20.ag), including
-covenant-ID ownership and borrowed receive. KAST uses the same eight decimal
+covenant-ID ownership and borrowed receive. KAS20 uses the same eight decimal
 places as KAS, with one token base unit per sompi. Minting and transfers enforce
 exact backing on every token output:
 
@@ -24,7 +24,7 @@ exact backing on every token output:
 value in sompi = amount in token base units
 ```
 
-Minting is permissionless and has no token supply cap: every new KAST must be
+Minting is permissionless and has no token supply cap: every new KAS20 must be
 funded with KAS, so supply is constrained by the KAS available to wrap.
 [`minter.ag`](contracts/minter.ag) supports public minting and permissionless
 creation of additional minters in the same token family. The minter's operational KAS is separate from
@@ -45,25 +45,25 @@ convention; this example does not designate a canonical deployment.
 
 ## Run and debug
 
-From `examples/kast/`:
+From `examples/kas20/`:
 
 ```sh
 cargo run --locked -- build
 cargo run --locked -- demo
 ```
 
-The offline demo deploys KAST, mints one KAST each to Bob and Alice, transfers
-Alice's KAST to Bob through borrowed receive, and burns Bob's two KAST. It also
+The offline demo deploys KAS20, mints one KAS20 each to Bob and Alice, transfers
+Alice's KAS20 to Bob through borrowed receive, and burns Bob's two KAS20. It also
 splits and rebalances the minter. It uses deterministic test keys and submits
 no transactions to a node.
 
-`build/kast-demo/` contains the compiled contracts, genesis transaction, initial
+`build/kas20-demo/` contains the compiled contracts, genesis transaction, initial
 state, Argent genesis proof, and demo transactions.
 
 To run the same demo as a test:
 
 ```sh
-cargo test --locked --bin kast tests::run_demo -- --exact --nocapture
+cargo test --locked --bin kas20 tests::run_demo -- --exact --nocapture
 ```
 
 In VS Code with CodeLLDB, click **Debug** above `run_demo` in
@@ -79,6 +79,6 @@ cargo test --locked --all-targets
 cargo clippy --locked --all-targets -- -D warnings
 ```
 
-Regeneration updates only KAST artifacts in [`fixtures`](fixtures/): the token
+Regeneration updates only KAS20 artifacts in [`fixtures`](fixtures/): the token
 descriptor, compiled artifact, manifest, and SIL. Tests cover backing, owner and borrow authorization,
 minter lifecycle, deposit rebalancing, burning, and positive demo output values.
